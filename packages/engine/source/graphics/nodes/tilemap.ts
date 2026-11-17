@@ -49,7 +49,7 @@ export class TilemapNode extends CanvasItem2D {
 
   private readonly _columns: number
   private readonly _rows: number
-  private readonly _tiles: Map<string, number> = new Map<string, number>()
+  private readonly _tiles: Map<number, number> = new Map<number, number>()
   private _view: Bounds2 | undefined
   private readonly _meshes: Map<number, GraphicMesh2D> = new Map<number, GraphicMesh2D>()
 
@@ -102,16 +102,12 @@ export class TilemapNode extends CanvasItem2D {
    * @throws {@link RangeError} If the cell or the tile is outside the map.
    */
   public setTile(column: number, row: number, tile: number): void {
-    if (column < 0 || row < 0 || column >= this._columns || row >= this._rows) {
-      throw new RangeError('Tiles must be placed inside the map.')
-    }
-
     const tileset = this.tileset.value
     if (tile < 0 || tile >= tileset.columns * tileset.rows) {
       throw new RangeError('Tile indices must exist in the tileset.')
     }
 
-    this._tiles.set(`${String(column)},${String(row)}`, tile)
+    this._tiles.set(this.index(column, row), tile)
   }
 
   /**
@@ -122,7 +118,7 @@ export class TilemapNode extends CanvasItem2D {
    * @returns The tile index, or undefined when the cell is empty.
    */
   public tileAt(column: number, row: number): number | undefined {
-    return this._tiles.get(`${String(column)},${String(row)}`)
+    return this._tiles.get(this.index(column, row))
   }
 
   /**
@@ -133,7 +129,7 @@ export class TilemapNode extends CanvasItem2D {
    * @returns Whether the cell had a tile.
    */
   public clearTile(column: number, row: number): boolean {
-    return this._tiles.delete(`${String(column)},${String(row)}`)
+    return this._tiles.delete(this.index(column, row))
   }
 
   /** @inheritDoc */
@@ -151,9 +147,9 @@ export class TilemapNode extends CanvasItem2D {
     const tileset = this.tileset.value
     const tileSize = tileset.tileSize
     const view = this._view
-    for (const [key, tile] of this._tiles) {
-      const [column, row] = key.split(',').map(Number)
-      if (column === undefined || row === undefined) continue
+    for (const [cell, tile] of this._tiles) {
+      const column = cell % this._columns
+      const row = Math.floor(cell / this._columns)
       const x = (column - this._columns / 2 + 0.5) * tileSize.x
       const y = (row - this._rows / 2 + 0.5) * tileSize.y
       if (view !== undefined) {
@@ -181,6 +177,14 @@ export class TilemapNode extends CanvasItem2D {
     if (!this.tileset.destroyed) this.tileset.destroy()
     if (!this.culling.destroyed) this.culling.destroy()
     super.onDestroy()
+  }
+
+  private index(column: number, row: number): number {
+    if (column < 0 || row < 0 || column >= this._columns || row >= this._rows) {
+      throw new RangeError('Tile cells must be inside the map.')
+    }
+
+    return row * this._columns + column
   }
 
   private meshFor(tile: number): GraphicMesh2D {
