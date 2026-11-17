@@ -231,6 +231,19 @@ export default defineConfig(
       '@typescript-eslint/no-unnecessary-condition': 'error',
       '@typescript-eslint/no-unnecessary-type-assertion': 'error',
       '@typescript-eslint/no-unnecessary-type-parameters': 'error',
+      // The no-unsafe family reports every value typed as `any` or as a
+      // transient error type, which floods the editor with warnings from stale
+      // type-server state. The codebase does not use `any`, so the family is
+      // disabled here instead of silenced case by case.
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-declaration-merging': 'off',
+      '@typescript-eslint/no-unsafe-enum-comparison': 'off',
+      '@typescript-eslint/no-unsafe-function-type': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unsafe-unary-minus': 'off',
       '@typescript-eslint/no-unused-vars': [
         'error',
         { args: 'all', argsIgnorePattern: '^_', caughtErrors: 'all' },

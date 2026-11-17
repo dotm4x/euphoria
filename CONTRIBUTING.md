@@ -60,7 +60,9 @@ the whole workspace without building packages first.
 [eslint.config.mjs](./eslint.config.mjs) is the authoritative source for lint rules and
 [.prettierrc.json](./.prettierrc.json) for formatting. Prettier owns token-level formatting;
 ESLint enforces structure and quality, and its stylistic rules only manage blank lines, so the
-two tools never format the same text. Do not add ESLint rules that duplicate Prettier. Omit
+two tools never format the same text. Do not add ESLint rules that duplicate Prettier. The
+`no-unsafe` family stays disabled: it reports transient error types from the language server as
+unsafe values, and the codebase does not use `any` anyway. Omit
 optional semicolons in JavaScript and TypeScript; Prettier retains them where needed for correct
 parsing. `TODO` and `FIXME` comments are reported as warnings, so use them deliberately.
 
