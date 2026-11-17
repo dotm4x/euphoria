@@ -27,6 +27,11 @@ export interface ViewportNodeOptions extends CanvasItem2DOptions {
   readonly clearColor?: Color
   /** Samples drawn per target pixel. Defaults to 4. */
   readonly sampleCount?: number
+  /**
+   * Whether the target receives a depth buffer, required for three-dimensional
+   * contents. Defaults to false.
+   */
+  readonly depthBuffer?: boolean
 }
 
 /**
@@ -50,12 +55,13 @@ export class ViewportNode extends CanvasItem2D implements RenderContainer {
     createMaterial,
     clearColor = new Color(0, 0, 0, 0),
     sampleCount = 4,
+    depthBuffer = false,
     ...options
   }: ViewportNodeOptions) {
     super(options)
     this._size = new Store(size)
     this._clearColor = clearColor
-    this._target = new RenderTarget(size, { sampleCount })
+    this._target = new RenderTarget(size, { sampleCount, depth: depthBuffer })
     this._material = createMaterial(this._target)
     this.material.value = this._material
   }
