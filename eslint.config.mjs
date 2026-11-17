@@ -54,8 +54,6 @@ export default defineConfig(
       '**/coverage/**',
       '**/build/**',
       '**/.pnpm-store/**',
-      '**/playwright-report/**',
-      '**/test-results/**',
       '**/*.generated.*',
     ],
   },

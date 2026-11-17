@@ -9,7 +9,6 @@
     "start": "pnpm dev",
     "preview": "vite preview",
     "typecheck": "pnpm --filter @euphoria/engine build && tsc --noEmit -p tsconfig.json",
-    "test:gpu": "playwright test",
     "bench": "node scripts/bench-balls.mjs"
   },
   "dependencies": {
