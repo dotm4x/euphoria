@@ -34,7 +34,7 @@ export class SpaceRenderPass extends RenderPass {
       const viewport =
         space.viewport.value ??
         (target === undefined ? backend.viewport : new Viewport(new Vector2(0, 0), target.size))
-      const context = new RenderContext(deltaTime, space.camera.value, viewport)
+      const context = new RenderContext(deltaTime, space.camera.value, viewport, backend)
       backend.render(space.collect(context), context, target)
     }
   }

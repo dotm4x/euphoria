@@ -1,6 +1,25 @@
+import { type DrawCommand } from '../commands/command.js'
 import { type Viewport } from '../primitives/viewport.js'
+import { type RenderTarget } from '../resources/targets/target.js'
 
 import { type Camera } from './camera.js'
+
+/**
+ * A destination that executes drawing commands.
+ *
+ * Drawable objects use the sink to render nested views, such as the contents of
+ * a viewport node, without depending on a specific rendering backend.
+ */
+export interface DrawSink {
+  /**
+   * Executes commands on a drawing destination.
+   *
+   * @param commands - The commands to execute, in order.
+   * @param context - The camera and viewport context, or undefined for context-free commands.
+   * @param target - The offscreen target, or undefined to draw to the window.
+   */
+  render(commands: Iterable<DrawCommand>, context?: DrawContext, target?: RenderTarget): void
+}
 
 /**
  * The state available while producing drawing data for a frame.
@@ -28,4 +47,10 @@ export interface DrawContext {
 
   /** Viewport in which the current view is drawn. */
   readonly viewport: Viewport
+
+  /**
+   * Destination that executes nested drawing, or undefined when the context
+   * cannot render offscreen.
+   */
+  readonly sink?: DrawSink | undefined
 }
