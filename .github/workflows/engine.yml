@@ -1,4 +1,4 @@
-name: Euphoria
+name: Engine
 
 on:
   push:
@@ -7,22 +7,22 @@ on:
       - 'sandbox/**'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
-      - '.github/workflows/euphoria.yml'
+      - '.github/workflows/engine.yml'
   pull_request:
     paths:
       - 'packages/engine/**'
       - 'sandbox/**'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
-      - '.github/workflows/euphoria.yml'
+      - '.github/workflows/engine.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  euphoria:
-    name: Euphoria checks
+  engine:
+    name: Engine checks
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
