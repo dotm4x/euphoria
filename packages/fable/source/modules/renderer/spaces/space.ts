@@ -9,6 +9,7 @@ import { type Camera } from '#/graphics/interfaces/camera.js'
 import { type DrawContext } from '#/graphics/interfaces/context.js'
 import { type Drawable } from '#/graphics/interfaces/drawable.js'
 import { type Viewport } from '#/graphics/primitives/viewport.js'
+import { type BlendMode } from '#/graphics/resources/blend-mode.js'
 import { type GraphicMaterial } from '#/graphics/resources/material.js'
 import { type RenderTarget } from '#/graphics/resources/targets/target.js'
 import { type Matrix4x4 } from '#/math/primitives/matrices/matrix4x4.js'
@@ -134,11 +135,16 @@ export class RenderSpace extends Destroyable implements Identifiable<string> {
     const visible = this.cull
       ? commands.filter((command) => this.isVisible(command, viewProjection))
       : commands
-    const materials = new Map<GraphicMaterial, number>()
+    const materials = new Map<GraphicMaterial, Map<BlendMode | undefined, number>>()
     for (const command of visible) {
-      if (command instanceof Draw2DCommand && !materials.has(command.material)) {
-        materials.set(command.material, materials.size)
+      if (!(command instanceof Draw2DCommand)) continue
+      let blends = materials.get(command.material)
+      if (blends === undefined) {
+        blends = new Map<BlendMode | undefined, number>()
+        materials.set(command.material, blends)
       }
+
+      if (!blends.has(command.blend)) blends.set(command.blend, materials.size)
     }
 
     const depth = this.sort === RenderSortMode.depth
@@ -201,8 +207,13 @@ function orderOf(command: DrawCommand): number {
   return command instanceof Draw2DCommand ? command.order : 0
 }
 
-function materialOf(command: DrawCommand, materials: ReadonlyMap<GraphicMaterial, number>): number {
-  return command instanceof Draw2DCommand ? (materials.get(command.material) ?? 0) : -1
+function materialOf(
+  command: DrawCommand,
+  materials: ReadonlyMap<GraphicMaterial, ReadonlyMap<BlendMode | undefined, number>>,
+): number {
+  if (!(command instanceof Draw2DCommand)) return -1
+
+  return materials.get(command.material)?.get(command.blend) ?? 0
 }
 
 function depthOf(command: DrawCommand): number {

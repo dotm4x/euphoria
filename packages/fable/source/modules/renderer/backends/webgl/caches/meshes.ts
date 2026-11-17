@@ -22,6 +22,10 @@ export class GlMeshes {
 
   /** Returns the uploaded mesh, uploading it on first use. */
   public get(mesh: GraphicMesh2D): GlMesh {
+    if (mesh.destroyed) {
+      throw new Error('The mesh is destroyed.')
+    }
+
     const cached = this._meshes.get(mesh)
     if (cached !== undefined) return cached
 
@@ -59,16 +63,25 @@ export class GlMeshes {
     return glMesh
   }
 
+  /** Deletes one uploaded mesh. */
+  public delete(mesh: GraphicMesh2D): void {
+    const cached = this._meshes.get(mesh)
+    if (cached === undefined) return
+    this._meshes.delete(mesh)
+    this.destroyMesh(cached)
+  }
+
   /** Deletes every uploaded mesh. */
   public clear(): void {
-    const gl = this._gl
-    for (const mesh of this._meshes.values()) {
-      gl.deleteVertexArray(mesh.vertexArray)
-      gl.deleteBuffer(mesh.vertexBuffer)
-      gl.deleteBuffer(mesh.indexBuffer)
-    }
-
+    for (const mesh of this._meshes.values()) this.destroyMesh(mesh)
     this._meshes.clear()
+  }
+
+  private destroyMesh(mesh: GlMesh): void {
+    const gl = this._gl
+    gl.deleteVertexArray(mesh.vertexArray)
+    gl.deleteBuffer(mesh.vertexBuffer)
+    gl.deleteBuffer(mesh.indexBuffer)
   }
 
   private configureAttributes(gl: WebGL2RenderingContext): void {

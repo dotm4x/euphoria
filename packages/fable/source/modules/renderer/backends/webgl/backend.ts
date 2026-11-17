@@ -12,8 +12,10 @@ import { type GraphicMaterial } from '#/graphics/resources/material.js'
 import { RenderTarget, RenderTargetFormat } from '#/graphics/resources/targets/target.js'
 import { type TextureBinding } from '#/graphics/resources/textures/binding.js'
 import { ImageTexture } from '#/graphics/resources/textures/image.js'
+import { type Bounds2 } from '#/math/geometry/bounds2.js'
 import { Matrix4x4 } from '#/math/primitives/matrices/matrix4x4.js'
 import { Vector2 } from '#/math/primitives/vectors/vector2.js'
+import { Vector4 } from '#/math/primitives/vectors/vector4.js'
 
 import { RenderBackend, type RenderStats } from '../backend.js'
 
@@ -62,6 +64,7 @@ export class WebGlBackend extends RenderBackend {
   private _contextLost: boolean = false
   private _target: RenderTarget | undefined
   private _framebuffer: WebGLFramebuffer | null = null
+  private _viewProjection: Matrix4x4 | undefined
   private _drawCalls: number = 0
   private _batchCount: number = 0
   private _commandCount: number = 0
@@ -235,6 +238,7 @@ export class WebGlBackend extends RenderBackend {
       context === undefined
         ? undefined
         : context.camera.getProjection(context.viewport).multiply(context.camera.view)
+    this._viewProjection = viewProjection
 
     let batch: Draw2DCommand[] = []
     const flush = (): void => {
@@ -244,6 +248,7 @@ export class WebGlBackend extends RenderBackend {
       }
 
       this.applyScissor(context.viewport, size)
+      this.applyClip(batch[0]?.clip, size)
       this.drawBatch(batch, context, viewProjection)
       batch = []
     }
@@ -265,6 +270,7 @@ export class WebGlBackend extends RenderBackend {
     } finally {
       this._target = undefined
       this._framebuffer = null
+      this._viewProjection = undefined
       gl.disable(gl.SCISSOR_TEST)
       gl.bindFramebuffer(gl.FRAMEBUFFER, null)
       gl.bindVertexArray(null)
@@ -307,6 +313,38 @@ export class WebGlBackend extends RenderBackend {
     )
   }
 
+  private applyClip(clip: Bounds2 | undefined, size: Vector2): void {
+    if (clip === undefined) return
+    const gl = this._gl
+    const viewProjection = this._viewProjection
+    if (viewProjection === undefined) return
+    let left = Number.POSITIVE_INFINITY
+    let right = Number.NEGATIVE_INFINITY
+    let top = Number.POSITIVE_INFINITY
+    let bottom = Number.NEGATIVE_INFINITY
+    for (const point of [
+      new Vector2(clip.min.x, clip.min.y),
+      new Vector2(clip.max.x, clip.min.y),
+      new Vector2(clip.max.x, clip.max.y),
+      new Vector2(clip.min.x, clip.max.y),
+    ]) {
+      const clip4 = viewProjection.transform(new Vector4(point.x, point.y, 0, 1))
+      const x = (clip4.x / clip4.w) * 0.5 + 0.5
+      const y = 0.5 - (clip4.y / clip4.w) * 0.5
+      left = Math.min(left, x)
+      right = Math.max(right, x)
+      top = Math.min(top, y)
+      bottom = Math.max(bottom, y)
+    }
+
+    const x = Math.max(0, Math.floor(left * size.x))
+    const y = Math.max(0, Math.floor(top * size.y))
+    const width = Math.min(size.x - x, Math.ceil((right - left) * size.x))
+    const height = Math.min(size.y - y, Math.ceil((bottom - top) * size.y))
+    gl.enable(gl.SCISSOR_TEST)
+    gl.scissor(x, size.y - y - Math.max(0, height), Math.max(0, width), Math.max(0, height))
+  }
+
   private applyScissor(viewport: Viewport, size: Vector2): void {
     const gl = this._gl
     if (!viewport.scissor) {
@@ -327,7 +365,11 @@ export class WebGlBackend extends RenderBackend {
       command.material,
       matrixValues(viewProjection),
       matrixValues(Matrix4x4.fromMatrix3x2(command.transform)),
+      command.blend,
     )
+    this.track(command.mesh, () => {
+      this._meshes.delete(command.mesh)
+    })
     const mesh = this._meshes.get(command.mesh)
     gl.bindVertexArray(mesh.vertexArray)
     gl.drawElements(gl.TRIANGLES, mesh.indexCount, gl.UNSIGNED_INT, 0)
@@ -343,7 +385,7 @@ export class WebGlBackend extends RenderBackend {
   ): void {
     const first = batch[0]
     if (first === undefined) return
-    if (batch.length === 1) {
+    if (batch.length === 1 && first.tint === undefined) {
       this.draw(first, context, viewProjection)
 
       return
@@ -365,6 +407,11 @@ export class WebGlBackend extends RenderBackend {
     for (const command of batch) {
       const base = vertex
       const matrix = command.transform
+      const tint = command.tint
+      this.track(command.mesh, () => {
+        this._meshes.delete(command.mesh)
+      })
+
       for (const item of command.mesh.vertices) {
         const offset = vertex * floatsPerVertex
         const x = item.position.x
@@ -373,10 +420,10 @@ export class WebGlBackend extends RenderBackend {
         this._batchVertices[offset + 1] = x * matrix.m12 + y * matrix.m22 + matrix.m32
         this._batchVertices[offset + 2] = item.textureCoordinate.x
         this._batchVertices[offset + 3] = item.textureCoordinate.y
-        this._batchVertices[offset + 4] = item.color.r
-        this._batchVertices[offset + 5] = item.color.g
-        this._batchVertices[offset + 6] = item.color.b
-        this._batchVertices[offset + 7] = item.color.a
+        this._batchVertices[offset + 4] = tint === undefined ? item.color.r : item.color.r * tint.r
+        this._batchVertices[offset + 5] = tint === undefined ? item.color.g : item.color.g * tint.g
+        this._batchVertices[offset + 6] = tint === undefined ? item.color.b : item.color.b * tint.b
+        this._batchVertices[offset + 7] = tint === undefined ? item.color.a : item.color.a * tint.a
         vertex++
       }
 
@@ -404,6 +451,7 @@ export class WebGlBackend extends RenderBackend {
       first.material,
       matrixValues(viewProjection),
       matrixValues(Matrix4x4.identity),
+      first.blend,
     )
     gl.bindVertexArray(this._batchVertexArray ?? null)
     gl.drawElements(gl.TRIANGLES, indexCount, gl.UNSIGNED_INT, 0)
@@ -416,6 +464,7 @@ export class WebGlBackend extends RenderBackend {
     material: GraphicMaterial,
     viewProjection: Float32Array,
     transform: Float32Array,
+    blend: BlendMode | undefined,
   ): void {
     const gl = this._gl
     this.track(material, () => {
@@ -439,7 +488,7 @@ export class WebGlBackend extends RenderBackend {
       applyUniform(gl, location, value)
     }
 
-    this.applyBlend(material.blend)
+    this.applyBlend(blend ?? material.blend)
   }
 
   private textureFor(binding: TextureBinding | undefined): WebGLTexture {
