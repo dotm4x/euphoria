@@ -4,7 +4,10 @@ import {
   type Image,
   ImageImporter,
   ImageTexture,
+  RapierBackend2D,
+  RapierBackend3D,
   type RenderBackend,
+  type SimulationBackend,
   TextureBinding,
   TextureSampler,
   WebGlBackend,
@@ -41,11 +44,20 @@ async function createMaterial(
   ])
 }
 
+async function createPhysics(): Promise<SimulationBackend[]> {
+  const params = new URLSearchParams(globalThis.location.search)
+  const scene = params.get('scene')
+  if (scene === 'physics3d') return [await RapierBackend3D.create()]
+  if (scene === 'physics') return [await RapierBackend2D.create()]
+
+  return []
+}
+
 async function main(): Promise<void> {
   const backend = selectBackend()
   const assets = new AssetsModule({ importers: [new ImageImporter()] })
   const material = await createMaterial(backend, assets)
-  const game = new Playground(backend, material, assets)
+  const game = new Playground(backend, material, assets, await createPhysics())
   game.start()
   game.time.run()
   measureRender(game)

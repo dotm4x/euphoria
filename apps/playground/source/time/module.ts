@@ -3,6 +3,7 @@ import {
   ChannelPriority,
   NodeChannel,
   type ScenesModule,
+  type SimulationModule,
   TimeModule,
   type Updatable,
 } from '@euphoria/engine'
@@ -10,8 +11,9 @@ import {
 export class MyTimeModule extends TimeModule {
   public main: Channel
   public scenes: NodeChannel
+  public physics: Channel
 
-  public constructor(game: Updatable, scenes: ScenesModule) {
+  public constructor(game: Updatable, scenes: ScenesModule, simulation: SimulationModule) {
     super()
     this.main = new Channel({
       identifier: 'main',
@@ -25,10 +27,17 @@ export class MyTimeModule extends TimeModule {
       targetUpdateRate: 60,
       priority: ChannelPriority.normal,
     })
+    this.physics = new Channel({
+      identifier: 'physics',
+      targetUpdateRate: 0,
+      priority: ChannelPriority.low,
+      entries: [simulation],
+    })
   }
 
   protected override *compose(): Generator<Channel> {
     yield this.main
     yield this.scenes
+    yield this.physics
   }
 }

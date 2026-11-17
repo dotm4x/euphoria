@@ -39,6 +39,11 @@ export class MyKeyboard extends Keyboard {
     source: 'ShiftLeft',
   })
 
+  public debug: KeyboardInputEvent = new KeyboardInputEvent({
+    identifier: 'debug',
+    source: 'KeyF',
+  })
+
   protected override *compose(): Generator<KeyboardInputEvent> {
     yield this.up
     yield this.down
@@ -53,5 +58,6 @@ export class MyKeyboard extends Keyboard {
     yield this.q
     yield this.e
     yield this.boost
+    yield this.debug
   }
 }
