@@ -7,7 +7,13 @@ export class MyMouse extends Mouse {
     source: 0,
   })
 
+  public secondary: MouseButtonEvent = new MouseButtonEvent({
+    identifier: 'secondary',
+    source: 2,
+  })
+
   protected override *compose(): Generator<MouseButtonEvent> {
     yield this.primary
+    yield this.secondary
   }
 }

@@ -60,6 +60,8 @@ export class CubeScene extends Node3D implements Updatable {
   private _mouse: Mouse | undefined
   private _status: string = ''
 
+  private readonly _cosa: SpinningMesh
+
   public constructor(material: GraphicMaterial) {
     const camera = new Camera3D({ name: 'camera', position: new Vector3(0, 2.5, 7) })
     const sun = new DirectionalLight3D({
@@ -72,20 +74,21 @@ export class CubeScene extends Node3D implements Updatable {
       range: 9,
       position: new Vector3(3, 2, 3),
     })
+    const cosa = new SpinningMesh({
+      name: 'box',
+      material,
+      mesh: createBoxMesh(new Vector3(1.6, 1.6, 1.6)),
+      position: new Vector3(-1.6, 1.2, 0),
+      modulate: new Color(1, 0.55, 0.25, 1),
+      speed: 0.7,
+    })
     const environment = new Environment3D({
       name: 'environment',
       environment: new LightEnvironment({ ambient: new Color(0.16, 0.17, 0.22, 1) }),
       children: [
         sun,
         orbiter,
-        new SpinningMesh({
-          name: 'box',
-          material,
-          mesh: createBoxMesh(new Vector3(1.6, 1.6, 1.6)),
-          position: new Vector3(-1.6, 1.2, 0),
-          modulate: new Color(1, 0.55, 0.25, 1),
-          speed: 0.7,
-        }),
+        cosa,
         new SpinningMesh({
           name: 'sphere',
           material,
@@ -107,6 +110,7 @@ export class CubeScene extends Node3D implements Updatable {
     this.camera = camera
     this._sun = sun
     this._orbiter = orbiter
+    this._cosa = cosa
     this.applyCamera()
   }
 
@@ -146,6 +150,10 @@ export class CubeScene extends Node3D implements Updatable {
     mouse.primary.connect(({ down, position }) => {
       this._dragging = down
       if (down && this.isInsideCanvas(position)) mouse.lock()
+    })
+    mouse.secondary.connect(({ down }) => {
+      if (!down || this._cosa.destroyed) return
+      this._cosa.destroy()
     })
     mouse.onWheel.connect(({ delta }) => {
       if (!this.loaded) return
