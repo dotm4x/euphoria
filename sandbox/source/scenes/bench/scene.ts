@@ -1,20 +1,20 @@
 import {
   type Camera2D,
+  CanvasItem2D,
   Color,
-  Draw2DCommand,
-  type Drawable,
-  DrawData,
+  type Draw2DCommand,
   type GraphicMaterial,
-  GraphicMesh2D,
-  GraphicVertex2D,
+  type GraphicMesh2D,
   Matrix3x2,
   Node2D,
+  RectNode,
+  unitQuadMesh,
   type Updatable,
   type UpdateContext,
   Vector2,
 } from '@dotm4x/fable'
 
-import { BallSimulation } from './simulation.js'
+import { type Ball, createBalls } from './simulation.js'
 
 /** Benchmark data published on the window for measurement tools. */
 export interface BallsBenchmark {
@@ -36,6 +36,9 @@ declare global {
 
 export type BallsMode = 'single' | 'nodes'
 
+const arena = { width: 620, height: 340 }
+const left = -arena.width / 2
+const top = -arena.height / 2
 const palette: readonly Color[] = [
   new Color(0.95, 0.3, 0.3),
   new Color(0.95, 0.65, 0.25),
@@ -45,109 +48,48 @@ const palette: readonly Color[] = [
   new Color(0.7, 0.4, 0.95),
 ]
 
-const arenaWidth = 620
-const arenaHeight = 340
-const left = -arenaWidth / 2
-const top = -arenaHeight / 2
-
-function createQuad(color: Color): GraphicMesh2D {
-  return new GraphicMesh2D(
-    [
-      new GraphicVertex2D(new Vector2(-0.5, -0.5), new Vector2(0, 0), color),
-      new GraphicVertex2D(new Vector2(0.5, -0.5), new Vector2(1, 0), color),
-      new GraphicVertex2D(new Vector2(0.5, 0.5), new Vector2(1, 1), color),
-      new GraphicVertex2D(new Vector2(-0.5, 0.5), new Vector2(0, 1), color),
-    ],
-    [0, 1, 2, 0, 2, 3],
-  )
-}
-
-function transformOf(x: number, y: number, radius: number): Matrix3x2 {
-  return Matrix3x2.scaling(radius * 2, radius * 2).multiply(Matrix3x2.translation(x, y))
-}
-
-function worldX(ball: { position: Vector2 }): number {
-  return left + ball.position.x
-}
-
-function worldY(ball: { position: Vector2 }): number {
-  return top + ball.position.y
-}
-
 /** One node that updates and draws every ball. */
-export class BallsNode extends Node2D implements Drawable, Updatable {
-  private readonly _balls: BallSimulation
-  private readonly _material: GraphicMaterial
-  private readonly _meshes: readonly GraphicMesh2D[]
+export class BallsNode extends CanvasItem2D implements Updatable {
+  private readonly _balls: Ball[]
+  private readonly _shape: GraphicMesh2D = unitQuadMesh
 
-  public constructor(simulation: BallSimulation, material: GraphicMaterial) {
-    super({ name: 'balls' })
-    this._balls = simulation
-    this._material = material
-    this._meshes = palette.map((color) => createQuad(color))
+  public constructor(material: GraphicMaterial, count: number) {
+    super({ material })
+    this._balls = createBalls(count, arena)
   }
 
   public update(context: UpdateContext): void {
-    this._balls.update(context.deltaTime)
+    for (const ball of this._balls) ball.update(context.deltaTime, arena)
   }
 
-  public draw(): DrawData {
-    const commands: Draw2DCommand[] = []
-    for (const ball of this._balls.balls) {
-      const mesh = this._meshes[ball.palette] ?? this._meshes[0]
-      if (mesh === undefined) continue
-      commands.push(
-        new Draw2DCommand({
-          mesh,
-          material: this._material,
-          transform: transformOf(worldX(ball), worldY(ball), ball.radius),
-        }),
+  protected override collectDraw(commands: Draw2DCommand[]): void {
+    for (const ball of this._balls) {
+      const color = palette[ball.palette] ?? Color.white
+      const transform = Matrix3x2.scaling(ball.radius * 2, ball.radius * 2).multiply(
+        Matrix3x2.translation(left + ball.position.x, top + ball.position.y),
       )
+      commands.push(this.createCommand(this._shape, transform, { tint: color }))
     }
-
-    return new DrawData(commands)
   }
 }
 
-/** One node per ball, each updating and drawing its own state. */
-export class BallNode extends Node2D implements Drawable, Updatable {
-  private readonly _simulation: BallSimulation
-  private readonly _index: number
-  private readonly _material: GraphicMaterial
-  private readonly _meshes: readonly GraphicMesh2D[]
+/** One node per ball, each with its own state. */
+export class BallNode extends RectNode implements Updatable {
+  private readonly _ball: Ball
 
-  public constructor(
-    simulation: BallSimulation,
-    index: number,
-    material: GraphicMaterial,
-    meshes: readonly GraphicMesh2D[],
-  ) {
-    super({ name: `ball-${String(index)}` })
-    this._simulation = simulation
-    this._index = index
-    this._material = material
-    this._meshes = meshes
+  public constructor(material: GraphicMaterial, ball: Ball) {
+    super({
+      material,
+      size: new Vector2(ball.radius * 2, ball.radius * 2),
+      selfModulate: palette[ball.palette] ?? Color.white,
+      position: new Vector2(left + ball.position.x, top + ball.position.y),
+    })
+    this._ball = ball
   }
 
   public update(context: UpdateContext): void {
-    const ball = this._simulation.balls[this._index]
-    if (ball === undefined) return
-    this._simulation.updateBall(ball, context.deltaTime)
-  }
-
-  public draw(): DrawData {
-    const ball = this._simulation.balls[this._index]
-    if (ball === undefined) return new DrawData([])
-    const mesh = this._meshes[ball.palette] ?? this._meshes[0]
-    if (mesh === undefined) return new DrawData([])
-
-    return new DrawData([
-      new Draw2DCommand({
-        mesh,
-        material: this._material,
-        transform: transformOf(worldX(ball), worldY(ball), ball.radius),
-      }),
-    ])
+    this._ball.update(context.deltaTime, arena)
+    this.position.value = new Vector2(left + this._ball.position.x, top + this._ball.position.y)
   }
 }
 
@@ -162,15 +104,11 @@ export class BallsScene extends Node2D implements Updatable {
   private _windowStart: number = performance.now()
 
   public constructor(material: GraphicMaterial, camera: Camera2D, mode: BallsMode, count: number) {
-    const simulation = new BallSimulation(count, arenaWidth, arenaHeight)
-    const meshes = palette.map((color) => createQuad(color))
     const children: Node2D[] = []
     if (mode === 'single') {
-      children.push(new BallsNode(simulation, material))
+      children.push(new BallsNode(material, count))
     } else {
-      for (let index = 0; index < count; index++) {
-        children.push(new BallNode(simulation, index, material, meshes))
-      }
+      for (const ball of createBalls(count, arena)) children.push(new BallNode(material, ball))
     }
 
     super({ name: 'balls', children })
