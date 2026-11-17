@@ -34,4 +34,17 @@ describe('LineNode', () => {
   it('requires at least two points', () => {
     expect(() => new LineNode({ points: [new Vector2(0, 0)] })).toThrow('two points')
   })
+
+  it('draws the closing join when the line is closed', () => {
+    const material = createMaterial()
+    const node = new LineNode({
+      material,
+      points: [new Vector2(0, 0), new Vector2(10, 0), new Vector2(10, 10)],
+      closed: true,
+    })
+
+    expect(node.draw(createContext()).commands).toHaveLength(6)
+    node.destroy()
+    material.destroy()
+  })
 })

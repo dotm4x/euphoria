@@ -72,7 +72,7 @@ export class LineNode extends CanvasItem2D {
       const segment = segmentTransform(start, end, width)
       if (segment === undefined) continue
       commands.push(this.createCommand(unitQuadMesh, segment))
-      if (this.joined.value && index > 0) {
+      if (this.joined.value && (index > 0 || this.closed.value)) {
         commands.push(this.createCommand(unitQuadMesh, squareTransform(start, width)))
       }
     }

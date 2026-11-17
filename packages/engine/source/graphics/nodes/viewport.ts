@@ -82,12 +82,13 @@ export class ViewportNode extends CanvasItem2D implements RenderContainer {
     return Matrix3x2.scaling(size.x, size.y)
   }
 
-  /** @inheritDoc */
-  public collectChildren(context: DrawContext): DrawCommand[] {
-    if (context.sink === undefined) {
-      throw new Error('A viewport node requires a drawing sink.')
-    }
-
+  /**
+   * The viewport renders its own children in {@link draw}, so the node
+   * traversal must not collect them again.
+   *
+   * @returns An empty list.
+   */
+  public collectChildren(_context: DrawContext): DrawCommand[] {
     return []
   }
 
