@@ -14,6 +14,7 @@ import { type MouseWheelEventPayload } from './events/wheel.js'
 export class Mouse extends InputDevice {
   private readonly _preparation: Once = new Once('Mouse preparation failed or is in progress.')
   private _target: HTMLElement | undefined
+  private _document: Document | undefined
   private readonly mouseDown: (event: MouseEvent) => void = (event) => {
     if (this._target !== undefined) this.handleButton(event, this._target, true)
   }
@@ -31,6 +32,16 @@ export class Mouse extends InputDevice {
   }
 
   private readonly _position: Store<Vector2> = new Store<Vector2>(new Vector2(0, 0))
+  private readonly _locked: Store<boolean> = new Store<boolean>(false)
+  private readonly onPointerLockChange: () => void = () => {
+    const target = this._target
+    this._locked.value = target !== undefined && this._document?.pointerLockElement === target
+  }
+
+  private readonly onPointerLockError: () => void = () => {
+    this._locked.value = false
+  }
+
   private readonly _onMove: Store<MouseMoveEventPayload> = new Store<MouseMoveEventPayload>({
     position: new Vector2(0, 0),
     delta: new Vector2(0, 0),
@@ -42,6 +53,13 @@ export class Mouse extends InputDevice {
   public readonly events: IdentifiableSet<MouseButtonEvent>
   /** Latest position relative to the element, in CSS pixels. */
   public readonly position: ReadOnlyStore<Vector2> = this._position
+  /**
+   * Whether the pointer is locked to the element.
+   *
+   * While locked, the cursor is hidden and movement is reported through
+   * {@link onMove} deltas instead of the position.
+   */
+  public readonly locked: ReadOnlyStore<boolean> = this._locked
   /** Latest movement and change notifications. */
   public readonly onMove: ReadOnlyStore<MouseMoveEventPayload> = this._onMove
   /** Wheel notifications. */
@@ -50,6 +68,50 @@ export class Mouse extends InputDevice {
   public constructor(events: Iterable<MouseButtonEvent> = []) {
     super('Mouse')
     this.events = new IdentifiableSet(events)
+  }
+
+  /**
+   * Locks the pointer to the element.
+   *
+   * Browsers only allow this during a user gesture and may reject the request;
+   * the rejection leaves {@link locked} as `false`. Pressing Escape releases the
+   * pointer and returns control to the page.
+   *
+   * @throws {@link Error} If the mouse is destroyed or has not started.
+   */
+  public lock(): void {
+    this.throwIfDestroyed()
+    const target = this._target
+    if (target === undefined) {
+      throw new Error('The mouse must be started before locking the pointer.')
+    }
+
+    if (this._document?.pointerLockElement === target) {
+      this._locked.value = true
+
+      return
+    }
+
+    try {
+      const request = target.requestPointerLock() as unknown
+      if (request instanceof Promise) {
+        request.catch(() => {
+          this._locked.value = false
+        })
+      }
+    } catch {
+      this._locked.value = false
+    }
+  }
+
+  /** Releases a pointer lock held by this element. */
+  public unlock(): void {
+    this.throwIfDestroyed()
+    const target = this._target
+    if (target === undefined) return
+    const owner = this._document
+    if (owner?.pointerLockElement !== target) return
+    owner.exitPointerLock()
   }
 
   /** @internal Publishes a browser mouse button transition. */
@@ -124,6 +186,10 @@ export class Mouse extends InputDevice {
     target.addEventListener('mouseup', this.mouseUp)
     target.addEventListener('mousemove', this.mouseMove)
     target.addEventListener('wheel', this.wheel)
+    const owner = ownerOf(target)
+    this._document = owner
+    owner?.addEventListener('pointerlockchange', this.onPointerLockChange)
+    owner?.addEventListener('pointerlockerror', this.onPointerLockError)
   }
 
   protected override onStop(): void {
@@ -131,6 +197,15 @@ export class Mouse extends InputDevice {
     this._target?.removeEventListener('mouseup', this.mouseUp)
     this._target?.removeEventListener('mousemove', this.mouseMove)
     this._target?.removeEventListener('wheel', this.wheel)
+    const owner = this._document
+    owner?.removeEventListener('pointerlockchange', this.onPointerLockChange)
+    owner?.removeEventListener('pointerlockerror', this.onPointerLockError)
+    if (this._target !== undefined && owner?.pointerLockElement === this._target) {
+      owner.exitPointerLock()
+    }
+
+    this._locked.value = false
+    this._document = undefined
     this._target = undefined
   }
 
@@ -142,6 +217,7 @@ export class Mouse extends InputDevice {
 
     this.events.clear()
     if (!this._position.destroyed) this._position.destroy()
+    if (!this._locked.destroyed) this._locked.destroy()
     if (!this._onMove.destroyed) this._onMove.destroy()
     if (!this._onWheel.destroyed) this._onWheel.destroy()
   }
@@ -150,4 +226,8 @@ export class Mouse extends InputDevice {
     const rect = target.getBoundingClientRect()
     return new Vector2(event.clientX - rect.left, event.clientY - rect.top)
   }
+}
+
+function ownerOf(target: HTMLElement): Document | undefined {
+  return (target as { readonly ownerDocument?: Document }).ownerDocument
 }

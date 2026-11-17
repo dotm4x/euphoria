@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { Mouse, MouseButtonEvent, Vector2 } from '../../../../../source/index.js'
+import { Game, InputModule, Mouse, MouseButtonEvent, Vector2 } from '../../../../../source/index.js'
 
 describe('Mouse', () => {
   it('updates position for an unsupported button without firing an action', () => {
@@ -60,5 +60,83 @@ describe('Mouse', () => {
     expect(button.destroyed).toBe(true)
     expect(mouse.position.destroyed).toBe(true)
     expect(mouse.onWheel.destroyed).toBe(true)
+  })
+
+  it('locks and unlocks the pointer through the owner document', () => {
+    const listeners = new Map<string, () => void>()
+    const exitPointerLock = vi.fn()
+    const owner = {
+      pointerLockElement: null as Element | null,
+      exitPointerLock,
+      addEventListener: (type: string, listener: () => void) => {
+        listeners.set(type, listener)
+      },
+      removeEventListener: (type: string) => {
+        listeners.delete(type)
+      },
+    } as unknown as Document
+    const requestPointerLock = vi.fn()
+    const target = Object.assign(new EventTarget(), {
+      ownerDocument: owner,
+      getBoundingClientRect: () => ({ left: 0, top: 0 }),
+      requestPointerLock,
+    }) as unknown as HTMLElement
+    const mouse = new Mouse()
+    const module = new InputModule({ target, devices: [mouse] })
+    const game = new (class extends Game {})([module])
+    game.start()
+
+    expect(mouse.locked.value).toBe(false)
+    mouse.lock()
+    expect(requestPointerLock).toHaveBeenCalledOnce()
+
+    Object.assign(owner, { pointerLockElement: target })
+    listeners.get('pointerlockchange')?.()
+    expect(mouse.locked.value).toBe(true)
+
+    mouse.unlock()
+    expect(exitPointerLock).toHaveBeenCalledOnce()
+
+    Object.assign(owner, { pointerLockElement: null })
+    listeners.get('pointerlockchange')?.()
+    expect(mouse.locked.value).toBe(false)
+    game.stop()
+    game.destroy()
+  })
+
+  it('requires a started mouse to lock the pointer', () => {
+    const mouse = new Mouse()
+
+    expect(() => {
+      mouse.lock()
+    }).toThrow('must be started')
+    mouse.destroy()
+  })
+
+  it('releases the pointer lock when the device stops', () => {
+    const exitPointerLock = vi.fn()
+    const owner = {
+      pointerLockElement: null as Element | null,
+      exitPointerLock,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as Document
+    const requestPointerLock = vi.fn()
+    const target = Object.assign(new EventTarget(), {
+      ownerDocument: owner,
+      getBoundingClientRect: () => ({ left: 0, top: 0 }),
+      requestPointerLock,
+    }) as unknown as HTMLElement
+    ;(owner as { pointerLockElement: Element | null }).pointerLockElement = target
+    const mouse = new Mouse()
+    const module = new InputModule({ target, devices: [mouse] })
+    const game = new (class extends Game {})([module])
+    game.start()
+
+    game.stop()
+
+    expect(exitPointerLock).toHaveBeenCalledOnce()
+    expect(mouse.locked.value).toBe(false)
+    game.destroy()
   })
 })
