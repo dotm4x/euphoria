@@ -11,8 +11,8 @@ project can grow without switching tools or rewriting its foundation.
 
 ## Features
 
-- **2D and 3D** — Build sprites, panels and tilemaps today, and three-dimensional
-  scenes and materials as the engine matures.
+- **2D and 3D** — Build sprites, panels and tilemaps, and light
+  three-dimensional scenes with cameras, meshes, depth and dynamic lights.
 - **Web-native** — Runs in the browser with no plugins, downloads or
   installations, on top of modern graphics APIs.
 - **Composition over boilerplate** — Scenes are trees of nodes, and cameras,
@@ -28,8 +28,9 @@ project can grow without switching tools or rewriting its foundation.
 
 > [!WARNING]
 > Euphoria Engine is under active development. Two-dimensional rendering is
-> available today; three-dimensional rendering, its materials and its scene
-> features are still being built and will arrive in later versions.
+> mature and three-dimensional rendering is available with meshes, cameras,
+> depth and dynamic lights; shadows, image-based lighting and advanced
+> materials are still being built.
 >
 > More information will be added as the engine progresses.
 
