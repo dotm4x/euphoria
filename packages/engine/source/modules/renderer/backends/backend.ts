@@ -4,6 +4,7 @@ import { ClearCommand } from '#/graphics/commands/clear.js'
 import { type DrawCommand } from '#/graphics/commands/command.js'
 import { type DrawContext } from '#/graphics/interfaces/context.js'
 import { type Viewport } from '#/graphics/primitives/viewport.js'
+import { type BlendMode } from '#/graphics/resources/blend-mode.js'
 import { type GraphicMaterial } from '#/graphics/resources/material.js'
 import { type RenderTarget } from '#/graphics/resources/targets/target.js'
 import { type TextureBinding } from '#/graphics/resources/textures/binding.js'
@@ -45,6 +46,13 @@ export abstract class RenderBackend extends Destroyable implements Identifiable<
   public abstract readonly defaultMaterial: GraphicMaterial
 
   /**
+   * Default material of the standard three-dimensional pipeline.
+   *
+   * The backend owns it and destroys it with the backend.
+   */
+  public abstract readonly default3DMaterial: GraphicMaterial
+
+  /**
    * @param identifier - The nonempty backend identifier.
    * @throws {@link Error} If the identifier is empty.
    */
@@ -73,6 +81,18 @@ export abstract class RenderBackend extends Destroyable implements Identifiable<
    * @returns A material compatible with this backend.
    */
   public abstract createMaterial(textures?: Iterable<TextureBinding>): GraphicMaterial
+
+  /**
+   * Creates a material for the standard three-dimensional pipeline.
+   *
+   * @param textures - Texture bindings; the first one is used as albedo.
+   * @param blend - Blend mode; defaults to opaque so depth is written.
+   * @returns A material owned by the caller.
+   */
+  public abstract createMaterial3D(
+    textures?: Iterable<TextureBinding>,
+    blend?: BlendMode,
+  ): GraphicMaterial
 
   /**
    * Begins a frame.

@@ -3,11 +3,13 @@ import { type Resource } from '#/core/primitives/resource.js'
 import { ClearCommand } from '#/graphics/commands/clear.js'
 import { type DrawCommand } from '#/graphics/commands/command.js'
 import { Draw2DCommand } from '#/graphics/commands/draw2d.js'
+import { Draw3DCommand } from '#/graphics/commands/draw3d.js'
 import { type DrawContext } from '#/graphics/interfaces/context.js'
-import { type Color } from '#/graphics/primitives/color.js'
+import { Color } from '#/graphics/primitives/color.js'
 import { Viewport } from '#/graphics/primitives/viewport.js'
 import { BlendMode } from '#/graphics/resources/blend-mode.js'
 import { Image } from '#/graphics/resources/image.js'
+import { LightKind, maximumPunctualLights } from '#/graphics/resources/light-environment.js'
 import { type GraphicMaterial } from '#/graphics/resources/material.js'
 import { RenderTarget, RenderTargetFormat } from '#/graphics/resources/targets/target.js'
 import { type TextureBinding } from '#/graphics/resources/textures/binding.js'
@@ -15,18 +17,35 @@ import { ImageTexture } from '#/graphics/resources/textures/image.js'
 import { type Bounds2 } from '#/math/geometry/bounds2.js'
 import { Matrix4x4 } from '#/math/primitives/matrices/matrix4x4.js'
 import { Vector2 } from '#/math/primitives/vectors/vector2.js'
+import { Vector3 } from '#/math/primitives/vectors/vector3.js'
 import { Vector4 } from '#/math/primitives/vectors/vector4.js'
 
 import { RenderBackend, type RenderStats } from '../backend.js'
 
-import { GlMeshes, GlPrograms, GlTargets, GlTextures } from './caches/index.js'
+import {
+  GlMeshes,
+  GlMeshes3D,
+  type GlProgram,
+  GlPrograms,
+  GlTargets,
+  GlTextures,
+} from './caches/index.js'
 import { applySampler, applyUniform, matrixValues, required } from './helpers/index.js'
 import { type WebGlBackendHooks } from './hooks.js'
 import { createDefaultMaterial } from './shaders/draw2d.js'
+import { createDefault3DMaterial } from './shaders/draw3d.js'
 
 const floatsPerVertex = 8
 const bytesPerVertex = floatsPerVertex * 4
 const maxTextures = 4
+
+function cameraPositionOf(context: DrawContext): Vector3 {
+  const inverse = context.camera.view.invert()
+  if (inverse === undefined) return new Vector3(0, 0, 0)
+  const origin = inverse.transform(new Vector4(0, 0, 0, 1))
+
+  return new Vector3(origin.x, origin.y, origin.z)
+}
 
 /** Configuration for a WebGL backend. */
 export interface WebGlBackendOptions {
@@ -55,6 +74,7 @@ export class WebGlBackend extends RenderBackend {
   private readonly _gl: WebGL2RenderingContext
   private readonly _programs: GlPrograms
   private readonly _meshes: GlMeshes
+  private readonly _meshes3d: GlMeshes3D
   private readonly _textures: GlTextures
   private readonly _targets: GlTargets
   private readonly _hooks: WebGlBackendHooks
@@ -69,6 +89,8 @@ export class WebGlBackend extends RenderBackend {
   private _batchCount: number = 0
   private _commandCount: number = 0
   private _skipFrame: boolean = false
+  private _depthState: boolean = false
+  private _cullState: boolean = false
   private _batchVertexArray: WebGLVertexArrayObject | undefined
   private _batchVertexBuffer: WebGLBuffer | undefined
   private _batchIndexBuffer: WebGLBuffer | undefined
@@ -79,6 +101,9 @@ export class WebGlBackend extends RenderBackend {
 
   /** @inheritDoc */
   public readonly defaultMaterial: GraphicMaterial
+
+  /** @inheritDoc */
+  public readonly default3DMaterial: GraphicMaterial
 
   /**
    * @param options - Canvas, identifier, antialiasing and hooks.
@@ -102,9 +127,11 @@ export class WebGlBackend extends RenderBackend {
     this._hooks = hooks
     this._programs = new GlPrograms(gl)
     this._meshes = new GlMeshes(gl)
+    this._meshes3d = new GlMeshes3D(gl)
     this._textures = new GlTextures(gl, textureBudget)
     this._targets = new GlTargets(gl)
     this.defaultMaterial = this.createMaterial()
+    this.default3DMaterial = this.createMaterial3D()
     this._onContextLost = (event: Event): void => {
       event.preventDefault()
       this._contextLost = true
@@ -113,6 +140,7 @@ export class WebGlBackend extends RenderBackend {
     this._onContextRestored = (): void => {
       this._programs.clear()
       this._meshes.clear()
+      this._meshes3d.clear()
       this._textures.clear()
       this._targets.clear()
       this._tracked.clear()
@@ -157,6 +185,14 @@ export class WebGlBackend extends RenderBackend {
   /** @inheritDoc */
   public createMaterial(textures?: Iterable<TextureBinding>): GraphicMaterial {
     return createDefaultMaterial(textures)
+  }
+
+  /** @inheritDoc */
+  public createMaterial3D(
+    textures?: Iterable<TextureBinding>,
+    blend: BlendMode = BlendMode.opaque,
+  ): GraphicMaterial {
+    return createDefault3DMaterial(textures, blend)
   }
 
   /** Releases cached textures; their sources re-upload them when used again. */
@@ -237,7 +273,7 @@ export class WebGlBackend extends RenderBackend {
     const viewProjection =
       context === undefined
         ? undefined
-        : context.camera.getProjection(context.viewport).multiply(context.camera.view)
+        : context.camera.view.multiply(context.camera.getProjection(context.viewport))
     this._viewProjection = viewProjection
 
     let batch: Draw2DCommand[] = []
@@ -263,6 +299,10 @@ export class WebGlBackend extends RenderBackend {
           const previous = batch[batch.length - 1]
           if (previous !== undefined && previous.material !== command.material) flush()
           batch.push(command)
+        } else if (command instanceof Draw3DCommand) {
+          flush()
+          if (context === undefined) throw new Error('Drawing commands require a drawing context.')
+          this.draw3D(command, context)
         }
       }
 
@@ -271,6 +311,9 @@ export class WebGlBackend extends RenderBackend {
       this._target = undefined
       this._framebuffer = null
       this._viewProjection = undefined
+      this.setDepthTest(false)
+      this.setCullFaces(false)
+      gl.depthMask(true)
       gl.disable(gl.SCISSOR_TEST)
       gl.bindFramebuffer(gl.FRAMEBUFFER, null)
       gl.bindVertexArray(null)
@@ -284,16 +327,28 @@ export class WebGlBackend extends RenderBackend {
     this._tracked.clear()
     this._programs.clear()
     this._meshes.clear()
+    this._meshes3d.clear()
     this._textures.clear()
     this._targets.clear()
     this.deleteBatchBuffers()
     if (!this.defaultMaterial.destroyed) this.defaultMaterial.destroy()
+    if (!this.default3DMaterial.destroyed) this.default3DMaterial.destroy()
+    if (!this.default3DMaterial.destroyed) this.default3DMaterial.destroy()
   }
 
   private clear(color: Color): void {
     const gl = this._gl
     gl.disable(gl.SCISSOR_TEST)
     gl.clearColor(color.r, color.g, color.b, color.a)
+    const depth = this._target === undefined ? true : this._target.depth
+    if (depth) {
+      this.setDepthTest(false)
+      gl.depthMask(true)
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+
+      return
+    }
+
     gl.clear(gl.COLOR_BUFFER_BIT)
   }
 
@@ -360,6 +415,8 @@ export class WebGlBackend extends RenderBackend {
 
   private draw(command: Draw2DCommand, context: DrawContext, viewProjection: Matrix4x4): void {
     const gl = this._gl
+    this.setDepthTest(false)
+    this.setCullFaces(false)
     this._hooks.beforeDraw?.(command, context)
     this.applyMaterial(
       command.material,
@@ -383,6 +440,8 @@ export class WebGlBackend extends RenderBackend {
     context: DrawContext,
     viewProjection: Matrix4x4,
   ): void {
+    this.setDepthTest(false)
+    this.setCullFaces(false)
     const first = batch[0]
     if (first === undefined) return
     if (batch.length === 1 && first.tint === undefined) {
@@ -465,7 +524,7 @@ export class WebGlBackend extends RenderBackend {
     viewProjection: Float32Array,
     transform: Float32Array,
     blend: BlendMode | undefined,
-  ): void {
+  ): GlProgram {
     const gl = this._gl
     this.track(material, () => {
       this._programs.delete(material)
@@ -489,6 +548,17 @@ export class WebGlBackend extends RenderBackend {
     }
 
     this.applyBlend(blend ?? material.blend)
+
+    return program
+  }
+
+  private uniformLocation(program: GlProgram, name: string): WebGLUniformLocation {
+    const location = this._programs.uniformLocation(program, name)
+    if (location === undefined) {
+      throw new Error(`The shader does not declare the uniform '${name}'.`)
+    }
+
+    return location
   }
 
   private textureFor(binding: TextureBinding | undefined): WebGLTexture {
@@ -520,6 +590,101 @@ export class WebGlBackend extends RenderBackend {
     }
 
     return this._textures.get(binding)
+  }
+
+  private draw3D(command: Draw3DCommand, context: DrawContext): void {
+    const gl = this._gl
+    const viewProjection = context.camera.view.multiply(
+      context.camera.getProjection(context.viewport),
+    )
+    this._hooks.beforeDraw?.(command, context)
+    this.track(command.mesh, () => {
+      this._meshes3d.delete(command.mesh)
+    })
+    const program = this.applyMaterial(
+      command.material,
+      matrixValues(viewProjection),
+      matrixValues(command.transform),
+      command.blend,
+    )
+    const tint = command.tint ?? Color.white
+    gl.uniform4fv(this.uniformLocation(program, 'uTint'), [tint.r, tint.g, tint.b, tint.a])
+    const cameraPosition = cameraPositionOf(context)
+    gl.uniform3fv(this.uniformLocation(program, 'uCameraPosition'), [
+      cameraPosition.x,
+      cameraPosition.y,
+      cameraPosition.z,
+    ])
+    this.uploadLights(program, command)
+
+    this.setDepthTest(true)
+    gl.depthFunc(gl.LEQUAL)
+    gl.depthMask(!command.transparent)
+    this.setCullFaces(true)
+    gl.cullFace(gl.BACK)
+    const mesh = this._meshes3d.get(command.mesh)
+    gl.bindVertexArray(mesh.vertexArray)
+    gl.drawElements(gl.TRIANGLES, mesh.indexCount, gl.UNSIGNED_INT, 0)
+    this._drawCalls++
+    this._batchCount++
+    this._commandCount++
+  }
+
+  private uploadLights(program: GlProgram, command: Draw3DCommand): void {
+    const gl = this._gl
+    const environment = command.environment
+    const ambient = environment?.ambient ?? Color.black
+    gl.uniform3fv(this.uniformLocation(program, 'uAmbientColor'), [ambient.r, ambient.g, ambient.b])
+    const directional = environment?.directional
+    const directionalColor = directional?.color ?? Color.black
+    gl.uniform3fv(this.uniformLocation(program, 'uDirectionalColor'), [
+      directionalColor.r,
+      directionalColor.g,
+      directionalColor.b,
+    ])
+    const direction = directional?.direction ?? new Vector3(0, 0, -1)
+    gl.uniform3fv(this.uniformLocation(program, 'uDirectionalDirection'), [
+      direction.x,
+      direction.y,
+      direction.z,
+    ])
+
+    const punctual = (environment?.punctual ?? []).slice(0, maximumPunctualLights)
+    const positions: number[] = []
+    const colors: number[] = []
+    const directions: number[] = []
+    const ranges: number[] = []
+    const cones: number[] = []
+    for (const light of punctual) {
+      positions.push(light.position.x, light.position.y, light.position.z)
+      colors.push(light.color.r, light.color.g, light.color.b)
+      directions.push(light.direction.x, light.direction.y, light.direction.z)
+      ranges.push(light.range)
+      cones.push(light.kind === LightKind.spot ? light.coneCosine : -1)
+    }
+
+    gl.uniform1i(this.uniformLocation(program, 'uLightCount'), punctual.length)
+    gl.uniform3fv(this.uniformLocation(program, 'uLightPositions'), new Float32Array(positions))
+    gl.uniform3fv(this.uniformLocation(program, 'uLightColors'), new Float32Array(colors))
+    gl.uniform3fv(this.uniformLocation(program, 'uLightDirections'), new Float32Array(directions))
+    gl.uniform1fv(this.uniformLocation(program, 'uLightRanges'), new Float32Array(ranges))
+    gl.uniform1fv(this.uniformLocation(program, 'uLightCones'), new Float32Array(cones))
+  }
+
+  private setDepthTest(enabled: boolean): void {
+    if (this._depthState === enabled) return
+    const gl = this._gl
+    if (enabled) gl.enable(gl.DEPTH_TEST)
+    else gl.disable(gl.DEPTH_TEST)
+    this._depthState = enabled
+  }
+
+  private setCullFaces(enabled: boolean): void {
+    if (this._cullState === enabled) return
+    const gl = this._gl
+    if (enabled) gl.enable(gl.CULL_FACE)
+    else gl.disable(gl.CULL_FACE)
+    this._cullState = enabled
   }
 
   private applyBlend(blend: BlendMode): void {

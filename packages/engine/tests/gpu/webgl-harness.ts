@@ -34,6 +34,8 @@ export class FakeWebGl2 {
   public readonly RGBA16F: number = 0x881a
   public readonly HALF_FLOAT: number = 0x140b
   public readonly RENDERBUFFER: number = 0x8d41
+  public readonly DEPTH_ATTACHMENT: number = 0x8d00
+  public readonly DEPTH_COMPONENT24: number = 0x81a6
   public readonly SCISSOR_TEST: number = 0x0c11
   public readonly MAX_SAMPLES: number = 0x8d57
   public readonly READ_FRAMEBUFFER: number = 0x8ca8
@@ -51,6 +53,11 @@ export class FakeWebGl2 {
   public readonly LINEAR: number = 0x2601
   public readonly NEAREST_MIPMAP_LINEAR: number = 0x2700
   public readonly LINEAR_MIPMAP_LINEAR: number = 0x2703
+  public readonly DEPTH_TEST: number = 0x0b71
+  public readonly LEQUAL: number = 0x0203
+  public readonly CULL_FACE: number = 0x0b44
+  public readonly BACK: number = 0x0405
+  public readonly DEPTH_BUFFER_BIT: number = 0x0100
   public readonly BLEND: number = 0x0be2
   public readonly SRC_ALPHA: number = 0x0302
   public readonly ONE_MINUS_SRC_ALPHA: number = 0x0303

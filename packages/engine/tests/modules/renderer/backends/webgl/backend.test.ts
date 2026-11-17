@@ -4,14 +4,20 @@ import {
   BlendMode,
   Bounds2,
   Camera2D,
+  Camera3D,
   ClearCommand,
   Color,
+  createBoxMesh,
+  createSphereMesh,
   Draw2DCommand,
+  Draw3DCommand,
   GraphicMaterial,
   GraphicMesh2D,
   GraphicVertex2D,
   Image,
   ImageTexture,
+  LightEnvironment,
+  LightKind,
   Matrix3x2,
   Matrix4x4,
   RasterImageFormat,
@@ -24,6 +30,7 @@ import {
   TextureBinding,
   TextureSampler,
   Vector2,
+  Vector3,
   Viewport,
   WebGlBackend,
 } from '../../../../../source/index.js'
@@ -63,6 +70,14 @@ function createCommand(material: GraphicMaterial, x: number = 0): Draw2DCommand 
 
 function createContext(): RenderContext {
   return new RenderContext(0, new Camera2D(), new Viewport(new Vector2(0, 0), new Vector2(100, 50)))
+}
+
+function create3DContext(): RenderContext {
+  return new RenderContext(
+    0,
+    new Camera3D({ position: new Vector3(0, 0, 5) }),
+    new Viewport(new Vector2(0, 0), new Vector2(100, 100)),
+  )
 }
 
 describe('WebGlBackend', () => {
@@ -286,7 +301,7 @@ describe('WebGlBackend', () => {
   it('uploads custom material uniforms', () => {
     const { backend, harness } = createBackend()
     const material = createMaterial()
-    material.setUniform('uTint', new Color(0.1, 0.2, 0.3, 0.4))
+    material.setUniform('uAccent', new Color(0.1, 0.2, 0.3, 0.4))
     material.setUniform('uScale', new Vector2(2, 3))
     material.setUniform('uTime', 0.5)
     material.setUniform('uFrame', Matrix4x4.identity)
@@ -297,7 +312,7 @@ describe('WebGlBackend', () => {
 
     const names = (call: string): unknown[] =>
       harness.gl.callsTo(call).map((item) => (item.args[0] as { name: string }).name)
-    expect(names('uniform4f')).toContain('uTint')
+    expect(names('uniform4f')).toContain('uAccent')
     expect(names('uniform2f')).toContain('uScale')
     expect(names('uniform1f')).toContain('uTime')
     expect(names('uniformMatrix4fv')).toContain('uFrame')
@@ -628,5 +643,290 @@ describe('WebGlBackend', () => {
     }).toThrow('mesh is destroyed')
     backend.destroy()
     material.destroy()
+  })
+
+  it('attaches depth buffers to targets that request them', () => {
+    const { backend, harness } = createBackend()
+    const multisampled = new RenderTarget(new Vector2(32, 16), { depth: true })
+    const plain = new RenderTarget(new Vector2(32, 16), { sampleCount: 1, depth: true })
+
+    backend.beginFrame()
+    backend.render([new ClearCommand(Color.black)], undefined, multisampled)
+    backend.render([new ClearCommand(Color.black)], undefined, plain)
+    backend.endFrame()
+
+    const attachments = harness.gl
+      .callsTo('framebufferRenderbuffer')
+      .filter((call) => call.args[1] === harness.gl.DEPTH_ATTACHMENT)
+    expect(attachments).toHaveLength(2)
+    const depthStorage = harness.gl
+      .callsTo('renderbufferStorageMultisample')
+      .filter((call) => call.args[2] === harness.gl.DEPTH_COMPONENT24)
+    expect(depthStorage).toHaveLength(1)
+    expect(
+      harness.gl
+        .callsTo('renderbufferStorage')
+        .filter((call) => call.args[1] === harness.gl.DEPTH_COMPONENT24),
+    ).toHaveLength(1)
+    backend.destroy()
+    multisampled.destroy()
+    plain.destroy()
+  })
+
+  it('uploads and draws three-dimensional meshes with depth testing', () => {
+    const { backend, harness } = createBackend()
+    const mesh = createBoxMesh()
+
+    backend.beginFrame()
+    backend.render(
+      [
+        new Draw3DCommand({
+          mesh,
+          material: backend.default3DMaterial,
+          transform: Matrix4x4.identity,
+        }),
+      ],
+      create3DContext(),
+    )
+    backend.endFrame()
+
+    const pointers = harness.gl.callsTo('vertexAttribPointer')
+    expect(pointers.map((call) => call.args.slice(0, 2))).toEqual([
+      [0, 3],
+      [1, 3],
+      [2, 2],
+    ])
+    expect(
+      harness.gl.callsTo('enable').some((call) => call.args[0] === harness.gl.DEPTH_TEST),
+    ).toBe(true)
+    expect(harness.gl.callsTo('enable').some((call) => call.args[0] === harness.gl.CULL_FACE)).toBe(
+      true,
+    )
+    expect(harness.gl.callsTo('cullFace')[0]?.args[0]).toBe(harness.gl.BACK)
+    expect(harness.gl.callsTo('depthFunc')[0]?.args[0]).toBe(harness.gl.LEQUAL)
+    expect(harness.gl.callsTo('drawElements')).toHaveLength(1)
+    expect(backend.stats.drawCalls).toBe(1)
+    mesh.destroy()
+    backend.destroy()
+  })
+
+  it('clears depth together with color', () => {
+    const { backend, harness } = createBackend()
+
+    backend.beginFrame()
+    backend.render([new ClearCommand(Color.black)])
+    backend.endFrame()
+
+    const clears = harness.gl.callsTo('clear')
+    expect(clears[0]?.args[0]).toBe(harness.gl.COLOR_BUFFER_BIT | harness.gl.DEPTH_BUFFER_BIT)
+    backend.destroy()
+  })
+
+  it('uploads the lights of the command environment', () => {
+    const { backend, harness } = createBackend()
+    const mesh = createBoxMesh()
+    const environment = new LightEnvironment({ ambient: new Color(0.2, 0.2, 0.3, 1) })
+    environment.setDirectional({
+      kind: LightKind.directional,
+      color: new Color(1, 0.5, 0.25, 1),
+      position: new Vector3(0, 0, 0),
+      direction: new Vector3(0, -1, 0),
+      range: 0,
+      coneCosine: 0,
+    })
+    environment.addPunctual({
+      kind: LightKind.omni,
+      color: Color.white,
+      position: new Vector3(1, 2, 3),
+      direction: new Vector3(0, 0, -1),
+      range: 8,
+      coneCosine: 0,
+    })
+
+    backend.beginFrame()
+    backend.render(
+      [
+        new Draw3DCommand({
+          mesh,
+          material: backend.default3DMaterial,
+          transform: Matrix4x4.identity,
+          environment,
+        }),
+      ],
+      create3DContext(),
+    )
+    backend.endFrame()
+
+    const counts = harness.gl.callsTo('uniform1i')
+    expect(counts.map((call) => call.args[1])).toEqual([1])
+    expect(harness.gl.callsTo('uniform3fv').length).toBeGreaterThanOrEqual(4)
+    expect(harness.gl.callsTo('uniform1fv').length).toBeGreaterThanOrEqual(2)
+    environment.destroy()
+    mesh.destroy()
+    backend.destroy()
+  })
+
+  it('disables depth writes for transparent commands', () => {
+    const { backend, harness } = createBackend()
+    const mesh = createBoxMesh()
+
+    backend.beginFrame()
+    backend.render(
+      [
+        new Draw3DCommand({
+          mesh,
+          material: backend.default3DMaterial,
+          transform: Matrix4x4.identity,
+          blend: BlendMode.alpha,
+        }),
+      ],
+      create3DContext(),
+    )
+    backend.endFrame()
+
+    expect(harness.gl.callsTo('depthMask').map((call) => call.args[0])).toContain(false)
+    expect(harness.gl.callsTo('depthMask').map((call) => call.args[0])).toContain(true)
+    mesh.destroy()
+    backend.destroy()
+  })
+
+  it('releases the GPU copy of a destroyed three-dimensional mesh', () => {
+    const { backend, harness } = createBackend()
+    const mesh = createBoxMesh()
+
+    backend.beginFrame()
+    backend.render(
+      [
+        new Draw3DCommand({
+          mesh,
+          material: backend.default3DMaterial,
+          transform: Matrix4x4.identity,
+        }),
+      ],
+      create3DContext(),
+    )
+    backend.endFrame()
+    mesh.destroy()
+
+    expect(harness.gl.callsTo('deleteVertexArray')).toHaveLength(1)
+    expect(() => {
+      backend.beginFrame()
+      backend.render(
+        [
+          new Draw3DCommand({
+            mesh,
+            material: backend.default3DMaterial,
+            transform: Matrix4x4.identity,
+          }),
+        ],
+        create3DContext(),
+      )
+      backend.endFrame()
+    }).toThrow('mesh is destroyed')
+    backend.destroy()
+  })
+
+  it('restores the two-dimensional state after a three-dimensional block', () => {
+    const { backend, harness } = createBackend()
+    const mesh = createBoxMesh()
+    const material = createMaterial()
+    const context = create3DContext()
+
+    backend.beginFrame()
+    backend.render(
+      [
+        new Draw3DCommand({
+          mesh,
+          material: backend.default3DMaterial,
+          transform: Matrix4x4.identity,
+        }),
+      ],
+      context,
+    )
+    backend.render(
+      [new Draw2DCommand({ mesh: createMesh(), material, transform: Matrix3x2.identity })],
+      context,
+    )
+    backend.endFrame()
+
+    const states = harness.gl.calls
+      .filter((call) => call.name === 'disable' || call.name === 'enable')
+      .map((call) => [call.name, call.args[0]])
+    expect(states).toContainEqual(['enable', harness.gl.DEPTH_TEST])
+    expect(states).toContainEqual(['disable', harness.gl.DEPTH_TEST])
+    expect(states).toContainEqual(['disable', harness.gl.CULL_FACE])
+    mesh.destroy()
+    material.destroy()
+    backend.destroy()
+  })
+
+  it('creates opaque three-dimensional materials that write depth', () => {
+    const { backend, harness } = createBackend()
+    const mesh = createBoxMesh()
+    const near = new Draw3DCommand({
+      mesh,
+      material: backend.default3DMaterial,
+      transform: Matrix4x4.translation(0, 0, 2),
+    })
+    const far = new Draw3DCommand({
+      mesh,
+      material: backend.default3DMaterial,
+      transform: Matrix4x4.translation(0, 0, -2),
+    })
+
+    backend.beginFrame()
+    backend.render([near, far], create3DContext())
+    backend.endFrame()
+
+    expect(backend.default3DMaterial.blend).toBe(BlendMode.opaque)
+    expect(harness.gl.callsTo('depthMask').map((call) => call.args[0])).not.toContain(false)
+    mesh.destroy()
+    backend.destroy()
+  })
+
+  it('accepts a blend mode when creating three-dimensional materials', () => {
+    const { backend } = createBackend()
+    const material = backend.createMaterial3D(undefined, BlendMode.alpha)
+
+    expect(material.blend).toBe(BlendMode.alpha)
+    material.destroy()
+    backend.destroy()
+  })
+
+  it('uploads every mesh inside its own vertex array', () => {
+    const { backend, harness } = createBackend()
+    const box = createBoxMesh()
+    const sphere = createSphereMesh(0.5, 6, 8)
+    const commands = [box, sphere].map(
+      (mesh) =>
+        new Draw3DCommand({
+          mesh,
+          material: backend.default3DMaterial,
+          transform: Matrix4x4.identity,
+        }),
+    )
+
+    for (let frame = 0; frame < 2; frame++) {
+      backend.beginFrame()
+      backend.render(commands, create3DContext())
+      backend.endFrame()
+    }
+
+    let boundArrays = 0
+    const outside = harness.gl.calls.filter((call) => {
+      if (call.name === 'bindVertexArray') {
+        boundArrays = call.args[0] === null ? 0 : boundArrays + 1
+      }
+
+      return (
+        call.name === 'bindBuffer' &&
+        call.args[0] === harness.gl.ELEMENT_ARRAY_BUFFER &&
+        boundArrays === 0
+      )
+    })
+    expect(outside).toHaveLength(0)
+    box.destroy()
+    sphere.destroy()
+    backend.destroy()
   })
 })

@@ -33,6 +33,7 @@ class TestGame extends Game {}
 
 class TestBackend extends RenderBackend {
   public readonly defaultMaterial: GraphicMaterial = createMaterial()
+  public readonly default3DMaterial: GraphicMaterial = createMaterial()
   public readonly events: string[] = []
   public readonly rendered: DrawCommand[][] = []
   public readonly contexts: (DrawContext | undefined)[] = []
@@ -50,6 +51,10 @@ class TestBackend extends RenderBackend {
   }
 
   public createMaterial(): GraphicMaterial {
+    return createMaterial()
+  }
+
+  public createMaterial3D(): GraphicMaterial {
     return createMaterial()
   }
 
