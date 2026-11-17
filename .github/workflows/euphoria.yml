@@ -3,14 +3,14 @@ name: Euphoria
 on:
   push:
     paths:
-      - 'packages/euphoria/**'
+      - 'packages/engine/**'
       - 'sandbox/**'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
       - '.github/workflows/euphoria.yml'
   pull_request:
     paths:
-      - 'packages/euphoria/**'
+      - 'packages/engine/**'
       - 'sandbox/**'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
@@ -43,13 +43,13 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Test
-        run: pnpm --filter @dotm4x/euphoria test
+        run: pnpm --filter @euphoria/engine test
 
       - name: Type-check
-        run: pnpm --filter @dotm4x/euphoria typecheck
+        run: pnpm --filter @euphoria/engine typecheck
 
       - name: Build
-        run: pnpm --filter @dotm4x/euphoria build
+        run: pnpm --filter @euphoria/engine build
 
       - name: Install GPU test browser
         run: pnpm --filter @euphoria/sandbox exec playwright install --with-deps chromium

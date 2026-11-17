@@ -8,7 +8,7 @@ import {
   TextureBinding,
   TextureSampler,
   WebGlBackend,
-} from '@dotm4x/euphoria'
+} from '@euphoria/engine'
 
 import { Sandbox } from './sandbox.js'
 import { type BallsBenchmark } from './scenes/bench/scene.js'

@@ -4,16 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "pnpm --filter @dotm4x/euphoria build && tsc --noEmit -p tsconfig.json && vite build",
-    "dev": "pnpm --filter @dotm4x/euphoria build && vite",
+    "build": "pnpm --filter @euphoria/engine build && tsc --noEmit -p tsconfig.json && vite build",
+    "dev": "pnpm --filter @euphoria/engine build && vite",
     "start": "pnpm dev",
     "preview": "vite preview",
-    "typecheck": "pnpm --filter @dotm4x/euphoria build && tsc --noEmit -p tsconfig.json",
+    "typecheck": "pnpm --filter @euphoria/engine build && tsc --noEmit -p tsconfig.json",
     "test:gpu": "playwright test",
     "bench": "node scripts/bench-balls.mjs"
   },
   "dependencies": {
-    "@dotm4x/euphoria": "workspace:*"
+    "@euphoria/engine": "workspace:*"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.0",

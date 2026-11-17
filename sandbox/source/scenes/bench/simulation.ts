@@ -1,4 +1,4 @@
-import { Vector2 } from '@dotm4x/euphoria'
+import { Vector2 } from '@euphoria/engine'
 
 /** Arena in which the benchmark balls bounce. */
 export interface Arena {

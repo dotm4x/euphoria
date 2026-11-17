@@ -5,7 +5,7 @@ import {
   type ScenesModule,
   TimeModule,
   type Updatable,
-} from '@dotm4x/euphoria'
+} from '@euphoria/engine'
 
 export class MyTimeModule extends TimeModule {
   public main: Channel

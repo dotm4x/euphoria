@@ -11,7 +11,7 @@ import {
   type Updatable,
   type UpdateContext,
   Vector2,
-} from '@dotm4x/euphoria'
+} from '@euphoria/engine'
 
 import { MyInputModule } from '../../input/module.js'
 

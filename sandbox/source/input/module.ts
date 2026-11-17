@@ -1,4 +1,4 @@
-import { type InputDevice, InputModule } from '@dotm4x/euphoria'
+import { type InputDevice, InputModule } from '@euphoria/engine'
 
 import { MyKeyboard } from './devices/keyboard.js'
 

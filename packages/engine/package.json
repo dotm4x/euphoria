@@ -1,5 +1,5 @@
 {
-  "name": "@dotm4x/euphoria",
+  "name": "@euphoria/engine",
   "version": "0.1.0",
   "description": "Euphoria workspace package",
   "type": "module",

@@ -1,4 +1,4 @@
-import { NodeRenderSpace, type RenderBackend, RendererModule } from '@dotm4x/euphoria'
+import { NodeRenderSpace, type RenderBackend, RendererModule } from '@euphoria/engine'
 
 import { type MyScenesModule } from '../scenes/module.js'
 

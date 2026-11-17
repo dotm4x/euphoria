@@ -9,7 +9,7 @@ import {
   type UpdateContext,
   Vector2,
   ViewportNode,
-} from '@dotm4x/euphoria'
+} from '@euphoria/engine'
 
 import { createVignetteMaterial } from '../renderer/vignette.js'
 

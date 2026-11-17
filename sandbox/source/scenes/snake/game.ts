@@ -1,4 +1,4 @@
-import { Vector2 } from '@dotm4x/euphoria'
+import { Vector2 } from '@euphoria/engine'
 
 /** Direction in which the snake moves. */
 export enum SnakeDirection {

@@ -1,4 +1,4 @@
-import { Keyboard, KeyboardInputEvent } from '@dotm4x/euphoria'
+import { Keyboard, KeyboardInputEvent } from '@euphoria/engine'
 
 export class MyKeyboard extends Keyboard {
   public up: KeyboardInputEvent = new KeyboardInputEvent({ identifier: 'up', source: 'ArrowUp' })

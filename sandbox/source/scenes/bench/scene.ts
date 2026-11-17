@@ -12,7 +12,7 @@ import {
   type Updatable,
   type UpdateContext,
   Vector2,
-} from '@dotm4x/euphoria'
+} from '@euphoria/engine'
 
 import { type Ball, createBalls } from './simulation.js'
 

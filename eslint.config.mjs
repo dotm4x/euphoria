@@ -123,7 +123,7 @@ export default defineConfig(
         'error',
         {
           type: 'natural',
-          internalPattern: ['^#/.+', '^@dotm4x/.+'],
+          internalPattern: ['^#/.+', '^@euphoria/.+'],
           groups: [
             ['value-builtin', 'type-builtin'],
             ['value-external', 'type-external'],

@@ -6,7 +6,7 @@ import {
   type RenderBackend,
   type Updatable,
   type UpdateContext,
-} from '@dotm4x/euphoria'
+} from '@euphoria/engine'
 
 import { MyInputModule } from './input/module.js'
 import { MyRendererModule } from './renderer/module.js'

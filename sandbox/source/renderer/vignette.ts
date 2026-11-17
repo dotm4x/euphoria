@@ -7,7 +7,7 @@ import {
   ShaderStage,
   TextureBinding,
   TextureSampler,
-} from '@dotm4x/euphoria'
+} from '@euphoria/engine'
 
 const vertexSource = /* glsl */ `#version 300 es
 precision highp float;

@@ -1,4 +1,4 @@
-import { Camera2D, type GraphicMaterial, type Node2D, ScenesModule } from '@dotm4x/euphoria'
+import { Camera2D, type GraphicMaterial, type Node2D, ScenesModule } from '@euphoria/engine'
 
 import { MyInputModule } from '../input/module.js'
 

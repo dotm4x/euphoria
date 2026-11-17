@@ -76,7 +76,7 @@ Imports are sorted into groups separated by one blank line:
 
 1. Node.js built-in modules
 2. External packages
-3. Internal modules: the package's `#/` subpath and workspace packages such as `@dotm4x/`
+3. Internal modules: the package's `#/` subpath and workspace packages such as `@euphoria/`
 4. Parent-directory imports (`../`)
 5. Sibling and index imports (`./`)
 

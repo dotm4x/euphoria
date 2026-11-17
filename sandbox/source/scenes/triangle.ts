@@ -1,4 +1,4 @@
-import { Color, GraphicMesh2D, GraphicVertex2D, Vector2 } from '@dotm4x/euphoria'
+import { Color, GraphicMesh2D, GraphicVertex2D, Vector2 } from '@euphoria/engine'
 
 /**
  * Creates the gradient triangle used by the demo.
