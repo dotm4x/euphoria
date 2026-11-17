@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   BlendMode,
+  Bounds2,
   Camera2D,
   ClearCommand,
   Color,
@@ -523,5 +524,109 @@ describe('WebGlBackend', () => {
     expect(image.data[100 * 4]).toBe(48)
     backend.destroy()
     image.destroy()
+  })
+
+  it('multiplies the vertex colors by the tint of the command', () => {
+    const { backend, harness } = createBackend()
+    const material = createMaterial()
+    const command = new Draw2DCommand({
+      mesh: createMesh(),
+      material,
+      transform: Matrix3x2.identity,
+      tint: new Color(0.5, 0.5, 0.5, 0.5),
+    })
+
+    backend.beginFrame()
+    backend.render([command], createContext())
+    backend.endFrame()
+
+    const uploads = harness.gl
+      .callsTo('bufferData')
+      .filter(
+        (call) =>
+          call.args[0] === harness.gl.ARRAY_BUFFER && call.args[2] === harness.gl.DYNAMIC_DRAW,
+      )
+    const data = uploads[0]?.args[1] as Float32Array | undefined
+    expect(data?.[4]).toBeCloseTo(0.5)
+    expect(data?.[13]).toBeCloseTo(0.5)
+    expect(data?.[22]).toBeCloseTo(0.5)
+    backend.destroy()
+    material.destroy()
+  })
+
+  it('overrides the material blend mode per command', () => {
+    const { backend, harness } = createBackend()
+    const material = createMaterial()
+    const command = new Draw2DCommand({
+      mesh: createMesh(),
+      material,
+      transform: Matrix3x2.identity,
+      blend: BlendMode.additive,
+    })
+
+    backend.beginFrame()
+    backend.render([command], createContext())
+    backend.endFrame()
+
+    const blends = harness.gl.callsTo('blendFuncSeparate')
+    expect(blends[0]?.args).toEqual([
+      harness.gl.SRC_ALPHA,
+      harness.gl.ONE,
+      harness.gl.ONE,
+      harness.gl.ONE,
+    ])
+    backend.destroy()
+    material.destroy()
+  })
+
+  it('clips commands with the scissor rectangle of their clip bounds', () => {
+    const { backend, harness } = createBackend()
+    const material = createMaterial()
+    const command = new Draw2DCommand({
+      mesh: createMesh(),
+      material,
+      transform: Matrix3x2.identity,
+      clip: new Bounds2(new Vector2(-10, -10), new Vector2(10, 10)),
+    })
+
+    backend.beginFrame()
+    backend.render([command], createContext())
+    backend.endFrame()
+
+    expect(harness.gl.callsTo('scissor')).toHaveLength(1)
+    expect(
+      harness.gl.callsTo('enable').some((call) => call.args[0] === harness.gl.SCISSOR_TEST),
+    ).toBe(true)
+    expect(
+      harness.gl.callsTo('disable').some((call) => call.args[0] === harness.gl.SCISSOR_TEST),
+    ).toBe(true)
+    backend.destroy()
+    material.destroy()
+  })
+
+  it('releases the GPU copy of a destroyed mesh', () => {
+    const { backend, harness } = createBackend()
+    const material = createMaterial()
+    const mesh = createMesh()
+
+    backend.beginFrame()
+    backend.render(
+      [new Draw2DCommand({ mesh, material, transform: Matrix3x2.identity })],
+      createContext(),
+    )
+    backend.endFrame()
+    mesh.destroy()
+
+    expect(harness.gl.callsTo('deleteVertexArray')).toHaveLength(1)
+    expect(() => {
+      backend.beginFrame()
+      backend.render(
+        [new Draw2DCommand({ mesh, material, transform: Matrix3x2.identity })],
+        createContext(),
+      )
+      backend.endFrame()
+    }).toThrow('mesh is destroyed')
+    backend.destroy()
+    material.destroy()
   })
 })
