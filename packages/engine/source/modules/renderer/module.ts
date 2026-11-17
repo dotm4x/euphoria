@@ -91,7 +91,7 @@ export class RendererModule extends Module implements Updatable {
    * @param space - Space to register.
    * @throws {@link Error} If the space is destroyed or its identifier is duplicated.
    */
-  public add(space: RenderSpace): void {
+  public addSpace(space: RenderSpace): void {
     this.throwIfDestroyed()
     this._spaces.add(space)
   }
@@ -102,7 +102,7 @@ export class RendererModule extends Module implements Updatable {
    * @param identifier - Identifier of the space to remove.
    * @returns The removed space, or undefined when it is not registered.
    */
-  public remove(identifier: string): RenderSpace | undefined {
+  public removeSpace(identifier: string): RenderSpace | undefined {
     this.throwIfDestroyed()
     const space = this._spaces.get(identifier)
     if (space === undefined) return undefined

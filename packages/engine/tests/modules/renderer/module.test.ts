@@ -205,10 +205,10 @@ describe('RendererModule', () => {
     const renderer = new RendererModule({ backend: new TestBackend() })
     const space = new RenderSpace({ identifier: 'space', camera: new Camera2D() })
 
-    renderer.add(space)
+    renderer.addSpace(space)
     expect(renderer.spaces.get('space')).toBe(space)
-    expect(renderer.remove('space')).toBe(space)
-    expect(renderer.remove('space')).toBeUndefined()
+    expect(renderer.removeSpace('space')).toBe(space)
+    expect(renderer.removeSpace('space')).toBeUndefined()
 
     renderer.destroy()
   })
