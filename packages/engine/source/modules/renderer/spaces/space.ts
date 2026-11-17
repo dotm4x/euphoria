@@ -4,19 +4,13 @@ import { type Identifiable } from '#/core/interfaces/identifiable.js'
 import { Node } from '#/core/node/node.js'
 import { Destroyable } from '#/core/primitives/destroyable.js'
 import { Once } from '#/core/primitives/once.js'
-import { type DrawCommand } from '#/graphics/commands/command.js'
-import { Draw2DCommand } from '#/graphics/commands/draw2d.js'
+import { type DrawCommand, isSortable } from '#/graphics/commands/command.js'
 import { type Camera } from '#/graphics/interfaces/camera.js'
 import { type DrawContext } from '#/graphics/interfaces/context.js'
 import { type Drawable } from '#/graphics/interfaces/drawable.js'
 import { type Viewport } from '#/graphics/primitives/viewport.js'
-import { type BlendMode } from '#/graphics/resources/blend-mode.js'
-import { type GraphicMaterial } from '#/graphics/resources/material.js'
 import { type RenderTarget } from '#/graphics/resources/targets/target.js'
 import { collectNodeCommands } from '#/graphics/traversal.js'
-import { type Matrix4x4 } from '#/math/primitives/matrices/matrix4x4.js'
-import { Vector2 } from '#/math/primitives/vectors/vector2.js'
-import { Vector4 } from '#/math/primitives/vectors/vector4.js'
 
 import { RenderSortMode } from './sort.js'
 
@@ -155,26 +149,39 @@ export class RenderSpace extends Destroyable implements Identifiable<string> {
    * @returns The commands to draw, in execution order.
    */
   protected prepare(commands: readonly DrawCommand[], context: DrawContext): DrawCommand[] {
-    const viewProjection = context.camera
-      .getProjection(context.viewport)
-      .multiply(context.camera.view)
+    const view = context.camera.view
+    const viewProjection = view.multiply(context.camera.getProjection(context.viewport))
     const visible = this.cull
-      ? commands.filter((command) => this.isVisible(command, viewProjection))
+      ? commands.filter((command) => !isSortable(command) || command.isVisible(viewProjection))
       : [...commands]
+    const depths = new Map<DrawCommand, number>()
+    const batches = new Map<unknown, number>()
+    const batchIndices = new Map<DrawCommand, number>()
+    for (const command of visible) {
+      if (!isSortable(command)) continue
+      depths.set(command, command.sortDepth(view))
+      if (!batches.has(command.batchKey)) batches.set(command.batchKey, batches.size)
+      batchIndices.set(command, batches.get(command.batchKey) ?? 0)
+    }
 
-    const depth = this.sort === RenderSortMode.depth
-    const batches = this.sort === RenderSortMode.batched ? batchIndices(visible) : undefined
+    const mode = this.sort
     visible.sort((left, right) => {
-      if (depth) {
-        const difference = depthOf(right) - depthOf(left)
-        if (difference !== 0) return difference
+      if (mode === RenderSortMode.batched) {
+        const order = orderOf(left) - orderOf(right)
+        if (order !== 0) return order
+
+        return (batchIndices.get(left) ?? 0) - (batchIndices.get(right) ?? 0)
       }
 
-      const order = orderOf(left) - orderOf(right)
-      if (order !== 0) return order
-      if (batches === undefined) return 0
+      if (mode === RenderSortMode.depth) {
+        const transparency = transparencyOf(left) - transparencyOf(right)
+        if (transparency !== 0) return transparency
 
-      return (batches.get(left) ?? 0) - (batches.get(right) ?? 0)
+        const depth = (depths.get(right) ?? 0) - (depths.get(left) ?? 0)
+        if (depth !== 0) return depth
+      }
+
+      return orderOf(left) - orderOf(right)
     })
 
     return visible
@@ -197,56 +204,12 @@ export class RenderSpace extends Destroyable implements Identifiable<string> {
     if (!this.viewport.destroyed) this.viewport.destroy()
     super.onDestroy()
   }
-
-  private isVisible(command: DrawCommand, viewProjection: Matrix4x4): boolean {
-    if (!(command instanceof Draw2DCommand)) return true
-
-    const { min, max } = command.mesh.bounds
-    let outsideLeft = true
-    let outsideRight = true
-    let outsideBelow = true
-    let outsideAbove = true
-    for (const corner of [
-      new Vector2(min.x, min.y),
-      new Vector2(max.x, min.y),
-      new Vector2(max.x, max.y),
-      new Vector2(min.x, max.y),
-    ]) {
-      const world = command.transform.transform(corner)
-      const clip = viewProjection.transform(new Vector4(world.x, world.y, 0, 1))
-      const limit = Math.abs(clip.w)
-      if (clip.x >= -limit) outsideLeft = false
-      if (clip.x <= limit) outsideRight = false
-      if (clip.y >= -limit) outsideBelow = false
-      if (clip.y <= limit) outsideAbove = false
-    }
-
-    return !(outsideLeft || outsideRight || outsideBelow || outsideAbove)
-  }
 }
 
 function orderOf(command: DrawCommand): number {
-  return command instanceof Draw2DCommand ? command.order : 0
+  return isSortable(command) ? command.order : 0
 }
 
-function batchIndices(commands: readonly DrawCommand[]): Map<DrawCommand, number> {
-  const materials = new Map<GraphicMaterial, Map<BlendMode | undefined, number>>()
-  const indices = new Map<DrawCommand, number>()
-  for (const command of commands) {
-    if (!(command instanceof Draw2DCommand)) continue
-    let blends = materials.get(command.material)
-    if (blends === undefined) {
-      blends = new Map<BlendMode | undefined, number>()
-      materials.set(command.material, blends)
-    }
-
-    if (!blends.has(command.blend)) blends.set(command.blend, materials.size)
-    indices.set(command, blends.get(command.blend) ?? 0)
-  }
-
-  return indices
-}
-
-function depthOf(command: DrawCommand): number {
-  return command instanceof Draw2DCommand ? command.depth : 0
+function transparencyOf(command: DrawCommand): number {
+  return isSortable(command) && command.transparent ? 1 : 0
 }

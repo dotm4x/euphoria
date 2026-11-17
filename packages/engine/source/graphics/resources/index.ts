@@ -1,5 +1,12 @@
 export { BlendMode } from './blend-mode.js'
 export { Image, RasterImageFormat } from './image.js'
+export {
+  type Light,
+  LightEnvironment,
+  type LightEnvironmentOptions,
+  LightKind,
+  maximumPunctualLights,
+} from './light-environment.js'
 export { GraphicMaterial, type GraphicMaterialOptions } from './material.js'
 export { ShaderSource, type ShaderSourceOptions } from './shader-source.js'
 export { Shader, ShaderLanguage, type ShaderOptions, ShaderStage } from './shader.js'

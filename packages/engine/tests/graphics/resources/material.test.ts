@@ -76,13 +76,13 @@ describe('GraphicMaterial', () => {
     const material = new GraphicMaterial({
       vertexShader: createShader(ShaderStage.vertex),
       fragmentShader: createShader(ShaderStage.fragment),
-      uniforms: [['uTint', Color.red]],
+      uniforms: [['uAccent', Color.red]],
     })
 
     material.setUniform('uScale', new Vector2(2, 3))
     material.setUniform('uTime', 1.5)
 
-    expect(material.uniforms.get('uTint')).toEqual(Color.red)
+    expect(material.uniforms.get('uAccent')).toEqual(Color.red)
     expect(material.uniforms.get('uScale')).toEqual(new Vector2(2, 3))
     expect(material.uniforms.get('uTime')).toBe(1.5)
     expect(material.removeUniform('uTime')).toBe(true)
