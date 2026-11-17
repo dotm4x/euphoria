@@ -1,4 +1,4 @@
 export * from './channels/index.js'
-export type { UpdateContext } from './context.js'
+export type * from './context.js'
 export type * from './interfaces/index.js'
-export { TimeModule, type TimeModuleOptions } from './module.js'
+export * from './module.js'

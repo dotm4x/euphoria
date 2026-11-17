@@ -1,1 +1,1 @@
-export { Asset, type AssetOptions } from './asset.js'
+export * from './asset.js'

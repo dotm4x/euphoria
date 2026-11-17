@@ -1,1 +1,1 @@
-export { type Identifiable } from './identifiable.js'
+export type * from './identifiable.js'

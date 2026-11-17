@@ -1,1 +1,1 @@
-export type { Updatable } from './updatable.js'
+export type * from './updatable.js'

@@ -1,3 +1,3 @@
-export { Destroyable, type DestroyableLifecycle, type ReadOnlyDestroyable } from './destroyable.js'
-export { Once } from './once.js'
-export { Resource } from './resource.js'
+export * from './destroyable.js'
+export * from './once.js'
+export * from './resource.js'

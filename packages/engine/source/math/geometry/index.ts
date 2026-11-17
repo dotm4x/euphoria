@@ -1,4 +1,4 @@
-export { Bounds2 } from './bounds2.js'
-export { Bounds3 } from './bounds3.js'
-export { Mesh2D } from './mesh2d.js'
-export { Mesh } from './mesh.js'
+export * from './bounds2.js'
+export * from './bounds3.js'
+export * from './mesh2d.js'
+export * from './mesh.js'

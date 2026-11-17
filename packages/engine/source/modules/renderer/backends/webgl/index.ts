@@ -1,2 +1,2 @@
-export { WebGlBackend, type WebGlBackendOptions } from './backend.js'
-export { type WebGlBackendHooks } from './hooks.js'
+export * from './backend.js'
+export type * from './hooks.js'

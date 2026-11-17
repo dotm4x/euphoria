@@ -1,2 +1,2 @@
-export { ImageImporter } from './image.js'
-export { ShaderImporter } from './shader.js'
+export * from './image.js'
+export * from './shader.js'

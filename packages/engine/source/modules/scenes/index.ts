@@ -1,1 +1,1 @@
-export { ScenesModule, type ScenesModuleOptions } from './module.js'
+export * from './module.js'

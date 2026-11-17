@@ -1,2 +1,2 @@
-export { ConsoleOutput } from './console.js'
-export { LogOutput, LogOutputPriority } from './output.js'
+export * from './console.js'
+export * from './output.js'

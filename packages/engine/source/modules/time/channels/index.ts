@@ -1,2 +1,2 @@
-export { Channel, type ChannelOptions, ChannelPriority } from './channel.js'
-export { NodeChannel, type NodeChannelOptions } from './node.js'
+export * from './channel.js'
+export * from './node.js'

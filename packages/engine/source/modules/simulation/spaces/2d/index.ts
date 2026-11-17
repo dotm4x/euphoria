@@ -1,2 +1,2 @@
-export { SceneSimulationSpace2D, type SceneSimulationSpace2DOptions } from './scene.js'
-export { SimulationSpace2D, type SimulationSpace2DOptions } from './space.js'
+export * from './scene.js'
+export * from './space.js'

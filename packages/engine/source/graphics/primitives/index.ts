@@ -1,2 +1,2 @@
-export { Color } from './color.js'
-export { Viewport } from './viewport.js'
+export * from './color.js'
+export * from './viewport.js'
