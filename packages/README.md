@@ -3,21 +3,13 @@
 The workspace is built from small packages. Each one keeps its own README,
 dependencies and scripts, and together they make up the project.
 
-## Euphoria Engine
+## @euphoria/engine
 
-`@euphoria/engine` — The open game engine behind Euphoria. A browser-native
-runtime for building two-dimensional games today, and three-dimensional
-experiences as the engine matures.
+The open game engine behind Euphoria. A browser-native runtime for building
+two-dimensional games today, and three-dimensional experiences as the engine
+matures.
 
 Read the [engine README](./engine/README.md).
-
-## Sandbox
-
-`@euphoria/sandbox` — A private playground that runs the engine in the browser,
-with demos, benchmarks and the GPU pixel tests. It is not published.
-
-Open the [sandbox](../sandbox) or follow [CONTRIBUTING.md](../CONTRIBUTING.md)
-to run it locally.
 
 ## Conventions
 
