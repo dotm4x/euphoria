@@ -34,6 +34,20 @@ export class Vector3 extends BaseVector<Vector3> {
     return [this.x, this.y, this.z]
   }
 
+  /**
+   * Calculates the cross product with another vector.
+   *
+   * @param other - The vector to multiply.
+   * @returns A vector perpendicular to both operands.
+   */
+  public cross(other: Vector3): Vector3 {
+    return new Vector3(
+      this.y * other.z - this.z * other.y,
+      this.z * other.x - this.x * other.z,
+      this.x * other.y - this.y * other.x,
+    )
+  }
+
   /** @inheritDoc */
   protected create(components: readonly number[]): Vector3 {
     return new Vector3(

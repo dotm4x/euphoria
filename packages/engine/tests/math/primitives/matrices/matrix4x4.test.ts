@@ -96,4 +96,32 @@ describe('Matrix4x4', () => {
 
     expect(Matrix4x4.scaling(0, 1, 1).invert()).toBeUndefined()
   })
+
+  it('projects the near and far planes to the clip limits', () => {
+    const projection = Matrix4x4.perspectiveFieldOfView(Math.PI / 3, 2, 0.1, 100)
+    const near = projection.transform(new Vector4(0, 0, -0.1, 1))
+    const far = projection.transform(new Vector4(0, 0, -100, 1))
+
+    expect(near.z / near.w).toBeCloseTo(-1)
+    expect(far.z / far.w).toBeCloseTo(1)
+  })
+
+  it('honours the aspect ratio and the field of view', () => {
+    const projection = Matrix4x4.perspectiveFieldOfView(Math.PI / 2, 2, 1, 10)
+    const edge = projection.transform(new Vector4(1, 0, -1, 1))
+    const right = projection.transform(new Vector4(2, 0, -1, 1))
+    const top = projection.transform(new Vector4(0, 1, -1, 1))
+
+    expect(right.x / right.w).toBeCloseTo(1)
+    expect(top.y / top.w).toBeCloseTo(1)
+    expect(edge.x / edge.w).toBeCloseTo(0.5)
+    expect(right.w).toBeCloseTo(1)
+  })
+
+  it('rejects invalid perspective parameters', () => {
+    expect(() => Matrix4x4.perspectiveFieldOfView(0, 1, 1, 10)).toThrow('field of view')
+    expect(() => Matrix4x4.perspectiveFieldOfView(1, 0, 1, 10)).toThrow('aspect ratio')
+    expect(() => Matrix4x4.perspectiveFieldOfView(1, 1, 0, 10)).toThrow('near plane')
+    expect(() => Matrix4x4.perspectiveFieldOfView(1, 1, 10, 10)).toThrow('near plane')
+  })
 })

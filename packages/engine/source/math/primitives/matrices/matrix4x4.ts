@@ -184,6 +184,98 @@ export class Matrix4x4 {
   }
 
   /**
+   * Creates a perspective projection for a view volume.
+   *
+   * The resulting matrix targets WebGL clip depth in `[-1, 1]` and follows the
+   * engine row-vector convention: `point.multiply(projection)` projects a point
+   * expressed in view space, where the camera looks towards negative z.
+   *
+   * @param fieldOfViewY - Vertical field of view, in radians.
+   * @param aspectRatio - Width divided by height of the viewport.
+   * @param near - Distance to the near plane; must be greater than zero.
+   * @param far - Distance to the far plane; must be greater than `near`.
+   * @returns The perspective projection matrix.
+   * @throws {@link RangeError} If a parameter is outside its valid range.
+   */
+  public static perspectiveFieldOfView(
+    fieldOfViewY: number,
+    aspectRatio: number,
+    near: number,
+    far: number,
+  ): Matrix4x4 {
+    if (!Number.isFinite(fieldOfViewY) || fieldOfViewY <= 0 || fieldOfViewY >= Math.PI) {
+      throw new RangeError('The field of view must be between zero and pi radians.')
+    }
+
+    if (!Number.isFinite(aspectRatio) || aspectRatio <= 0) {
+      throw new RangeError('The aspect ratio must be greater than zero.')
+    }
+
+    if (!Number.isFinite(near) || near <= 0 || !Number.isFinite(far) || far <= near) {
+      throw new RangeError('The far plane must be farther than the near plane.')
+    }
+
+    const scaleY = 1 / Math.tan(fieldOfViewY / 2)
+    const scaleX = scaleY / aspectRatio
+    const depth = (far + near) / (near - far)
+    const offset = (2 * far * near) / (near - far)
+
+    return new Matrix4x4(scaleX, 0, 0, 0, 0, scaleY, 0, 0, 0, 0, depth, -1, 0, 0, offset, 0)
+  }
+
+  /**
+   * Creates an orthographic projection with WebGL clip depth in `[-1, 1]`.
+   *
+   * Unlike {@link orthographicOffCenter}, which preserves the engine depth of
+   * two-dimensional scenes, this projection maps the near plane to `-1` and the
+   * far plane to `1`, so it can be used by three-dimensional cameras.
+   *
+   * @param left - The minimum x coordinate of the view volume.
+   * @param right - The maximum x coordinate of the view volume.
+   * @param bottom - The minimum y coordinate of the view volume.
+   * @param top - The maximum y coordinate of the view volume.
+   * @param near - The distance to the near plane; must be greater than zero.
+   * @param far - The distance to the far plane; must be greater than `near`.
+   * @returns The orthographic projection matrix.
+   * @throws {@link RangeError} If the planes are outside their valid range.
+   */
+  public static orthographicProjection(
+    left: number,
+    right: number,
+    bottom: number,
+    top: number,
+    near: number,
+    far: number,
+  ): Matrix4x4 {
+    if (!(right > left) || !(top > bottom)) {
+      throw new RangeError('The projection volume requires a positive width and height.')
+    }
+
+    if (!Number.isFinite(near) || near <= 0 || !Number.isFinite(far) || far <= near) {
+      throw new RangeError('The far plane must be farther than the near plane.')
+    }
+
+    return new Matrix4x4(
+      2 / (right - left),
+      0,
+      0,
+      0,
+      0,
+      2 / (top - bottom),
+      0,
+      0,
+      0,
+      0,
+      -2 / (far - near),
+      0,
+      (left + right) / (left - right),
+      (top + bottom) / (bottom - top),
+      (far + near) / (near - far),
+      1,
+    )
+  }
+
+  /**
    * Promotes a two-dimensional affine matrix by preserving its two-dimensional
    * transformation and leaving the z axis unaffected.
    *

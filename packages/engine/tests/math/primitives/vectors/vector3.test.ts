@@ -16,4 +16,13 @@ describe('Vector3', () => {
   it('normalizes a zero vector without producing non-finite components', () => {
     expect(new Vector3(0, 0, 0).normalize()).toEqual(new Vector3(0, 0, 0))
   })
+
+  it('calculates the cross product', () => {
+    const x = new Vector3(1, 0, 0)
+    const y = new Vector3(0, 1, 0)
+
+    expect(x.cross(y)).toEqual(new Vector3(0, 0, 1))
+    expect(y.cross(x)).toEqual(new Vector3(0, 0, -1))
+    expect(x.cross(x)).toEqual(new Vector3(0, 0, 0))
+  })
 })
