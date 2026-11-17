@@ -1,15 +1,13 @@
 import {
   type Camera2D,
   Color,
-  Draw2DCommand,
-  type Drawable,
-  DrawData,
   type GraphicMaterial,
-  GraphicMesh2D,
-  GraphicVertex2D,
   type KeyboardInputEvent,
   Matrix3x2,
+  MultiMeshNode,
   Node2D,
+  RectNode,
+  unitQuadMesh,
   type Updatable,
   type UpdateContext,
   Vector2,
@@ -20,7 +18,6 @@ import { MyInputModule } from '../../input/module.js'
 import { SnakeDirection, SnakeGame, SnakeState } from './game.js'
 
 const cellSize = 20
-
 const colors = {
   border: new Color(0.16, 0.2, 0.28),
   board: new Color(0.05, 0.07, 0.1),
@@ -29,116 +26,56 @@ const colors = {
   food: new Color(0.92, 0.3, 0.24),
 }
 
-interface SnakeMeshes {
-  readonly border: GraphicMesh2D
-  readonly board: GraphicMesh2D
-  readonly body: GraphicMesh2D
-  readonly head: GraphicMesh2D
-  readonly food: GraphicMesh2D
-}
-
-function createQuad(color: Color): GraphicMesh2D {
-  return new GraphicMesh2D(
-    [
-      new GraphicVertex2D(new Vector2(-0.5, -0.5), new Vector2(0, 0), color),
-      new GraphicVertex2D(new Vector2(0.5, -0.5), new Vector2(1, 0), color),
-      new GraphicVertex2D(new Vector2(0.5, 0.5), new Vector2(1, 1), color),
-      new GraphicVertex2D(new Vector2(-0.5, 0.5), new Vector2(0, 1), color),
-    ],
-    [0, 1, 2, 0, 2, 3],
-  )
-}
-
-/** Draws and steers a snake game inside the scene. */
-export class SnakeNode extends Node2D implements Drawable, Updatable {
-  private readonly _game: SnakeGame
-  private readonly _material: GraphicMaterial
-  private readonly _meshes: SnakeMeshes = {
-    border: createQuad(colors.border),
-    board: createQuad(colors.board),
-    body: createQuad(colors.body),
-    head: createQuad(colors.head),
-    food: createQuad(colors.food),
-  }
-
-  public constructor(game: SnakeGame, material: GraphicMaterial) {
-    super({ name: 'snake-board' })
-    this._game = game
-    this._material = material
-  }
-
-  public update(context: UpdateContext): void {
-    this._game.update(context.deltaTime)
-    this.syncStatus()
-  }
-
-  public draw(): DrawData {
-    const game = this._game
-    const commands: Draw2DCommand[] = [
-      this.command(this._meshes.border, game.columns * cellSize + 8, game.rows * cellSize + 8),
-      this.command(this._meshes.board, game.columns * cellSize, game.rows * cellSize),
-      this.commandAt(this._meshes.food, game.food.x, game.food.y, cellSize * 0.6),
-    ]
-    game.snake.forEach((cell, index) => {
-      const size = index === 0 ? cellSize - 1 : cellSize - 3
-      const mesh = index === 0 ? this._meshes.head : this._meshes.body
-      commands.push(this.commandAt(mesh, cell.x, cell.y, size))
-    })
-
-    return new DrawData(commands)
-  }
-
-  private command(mesh: GraphicMesh2D, width: number, height: number): Draw2DCommand {
-    return new Draw2DCommand({
-      mesh,
-      material: this._material,
-      transform: Matrix3x2.scaling(width, height),
-    })
-  }
-
-  private commandAt(mesh: GraphicMesh2D, column: number, row: number, size: number): Draw2DCommand {
-    const x = (column - this._game.columns / 2 + 0.5) * cellSize
-    const y = (row - this._game.rows / 2 + 0.5) * cellSize
-
-    return new Draw2DCommand({
-      mesh,
-      material: this._material,
-      transform: Matrix3x2.scaling(size, size).multiply(Matrix3x2.translation(x, y)),
-    })
-  }
-
-  private syncStatus(): void {
-    const score = document.querySelector('#score')
-    if (score !== null) score.textContent = String(this._game.score)
-
-    const status = document.querySelector('#status')
-    if (status === null) return
-    switch (this._game.state) {
-      case SnakeState.ready:
-        status.textContent = 'Arrows or WASD to start'
-        break
-      case SnakeState.paused:
-        status.textContent = 'Paused — Space to resume'
-        break
-      case SnakeState.over:
-        status.textContent = `Game over — score ${String(this._game.score)}. R to restart`
-        break
-      case SnakeState.running:
-        status.textContent = ''
-    }
-  }
-}
-
-/** Scene that hosts the playable snake game. */
-export class SnakeScene extends Node2D {
+/**
+ * Scene that hosts a playable snake.
+ *
+ * The board, the food and every segment are canvas item nodes: the board is a
+ * pair of rectangles, the food is a rectangle and the snake is a multi-mesh
+ * whose instances are repositioned as the game advances.
+ */
+export class SnakeScene extends Node2D implements Updatable {
   public readonly camera: Camera2D
   public readonly game: SnakeGame
 
+  private readonly _body: MultiMeshNode
+  private readonly _food: RectNode
+
   public constructor(material: GraphicMaterial, camera: Camera2D) {
     const game = new SnakeGame()
-    super({ name: 'snake', children: [new SnakeNode(game, material)] })
+    const width = game.columns * cellSize
+    const height = game.rows * cellSize
+    const border = new RectNode({
+      material,
+      size: new Vector2(width + 8, height + 8),
+      selfModulate: colors.border,
+    })
+    const board = new RectNode({
+      material,
+      size: new Vector2(width, height),
+      selfModulate: colors.board,
+    })
+    const food = new RectNode({
+      material,
+      size: new Vector2(cellSize * 0.6, cellSize * 0.6),
+      selfModulate: colors.food,
+    })
+    const body = new MultiMeshNode({
+      material,
+      mesh: unitQuadMesh,
+      count: game.columns * game.rows,
+    })
+    super({ name: 'snake', children: [border, board, food, body] })
     this.camera = camera
     this.game = game
+    this._body = body
+    this._food = food
+    this.sync()
+  }
+
+  public update(context: UpdateContext): void {
+    this.game.update(context.deltaTime)
+    this.sync()
+    this.syncStatus()
   }
 
   protected override configure(): void {
@@ -177,5 +114,51 @@ export class SnakeScene extends Node2D {
       this.game.reset()
       this.game.start()
     })
+  }
+
+  private sync(): void {
+    const cells = this.game.snake
+    for (let index = 0; index < cells.length; index++) {
+      const cell = cells[index]
+      if (cell === undefined) continue
+      const size = index === 0 ? cellSize - 1 : cellSize - 3
+      const x = (cell.x - this.game.columns / 2 + 0.5) * cellSize
+      const y = (cell.y - this.game.rows / 2 + 0.5) * cellSize
+      this._body.setTransform(
+        index,
+        Matrix3x2.scaling(size, size).multiply(Matrix3x2.translation(x, y)),
+      )
+      this._body.setColor(index, index === 0 ? colors.head : colors.body)
+    }
+
+    this._body.setActiveCount(cells.length)
+
+    const food = this.game.food
+    this._food.position.value = new Vector2(
+      (food.x - this.game.columns / 2 + 0.5) * cellSize,
+      (food.y - this.game.rows / 2 + 0.5) * cellSize,
+    )
+    this._food.visible.value = this.game.state !== SnakeState.over
+  }
+
+  private syncStatus(): void {
+    const score = document.querySelector('#score')
+    if (score !== null) score.textContent = String(this.game.score)
+
+    const status = document.querySelector('#status')
+    if (status === null) return
+    switch (this.game.state) {
+      case SnakeState.ready:
+        status.textContent = 'Arrows or WASD to start'
+        break
+      case SnakeState.paused:
+        status.textContent = 'Paused — Space to resume'
+        break
+      case SnakeState.over:
+        status.textContent = `Game over — score ${String(this.game.score)}. R to restart`
+        break
+      case SnakeState.running:
+        status.textContent = ''
+    }
   }
 }
