@@ -9,12 +9,18 @@ import { type KeyboardEventPayload, type KeyboardInputEvent } from './event.js'
 export class Keyboard extends InputDevice {
   private readonly _preparation: Once = new Once('Keyboard preparation failed or is in progress.')
   private _target: HTMLElement | undefined
+  private _window: Window | undefined
+  private readonly _pressed: Set<string> = new Set<string>()
   private readonly keyDown: (event: KeyboardEvent) => void = (event) => {
     this.handle(event, true)
   }
 
   private readonly keyUp: (event: KeyboardEvent) => void = (event) => {
     this.handle(event, false)
+  }
+
+  private readonly blur: () => void = () => {
+    this.releasePressed()
   }
 
   /** Adding an action transfers ownership; removing it returns ownership. */
@@ -34,6 +40,27 @@ export class Keyboard extends InputDevice {
       if (key === event.code) {
         const payload: KeyboardEventPayload = { key, down, repeat: event.repeat }
         action.fire(payload)
+        if (down) this._pressed.add(key)
+        else this._pressed.delete(key)
+      }
+    }
+  }
+
+  /**
+   * Releases every key that is still pressed.
+   *
+   * Browsers stop reporting keys when the window loses focus, so the pressed
+   * keys are released to avoid actions that stay active.
+   */
+  public releasePressed(): void {
+    this.throwIfDestroyed()
+    const pressed = [...this._pressed]
+    this._pressed.clear()
+    for (const key of pressed) {
+      for (const action of [...this.events]) {
+        if (this.events.get(action.identifier) !== action) continue
+        if (action.source.value !== key) continue
+        action.fire({ key, down: false, repeat: false })
       }
     }
   }
@@ -73,11 +100,17 @@ export class Keyboard extends InputDevice {
     this._target = target
     target.addEventListener('keydown', this.keyDown)
     target.addEventListener('keyup', this.keyUp)
+    const owner = windowOf(target)
+    this._window = owner
+    owner?.addEventListener('blur', this.blur)
   }
 
   protected override onStop(): void {
     this._target?.removeEventListener('keydown', this.keyDown)
     this._target?.removeEventListener('keyup', this.keyUp)
+    this._window?.removeEventListener('blur', this.blur)
+    this._window = undefined
+    this._pressed.clear()
     this._target = undefined
   }
 
@@ -89,4 +122,9 @@ export class Keyboard extends InputDevice {
 
     this.events.clear()
   }
+}
+
+function windowOf(target: HTMLElement): Window | undefined {
+  return (target as { readonly ownerDocument?: { readonly defaultView?: Window } }).ownerDocument
+    ?.defaultView
 }
