@@ -39,6 +39,19 @@ const floatsPerVertex = 8
 const bytesPerVertex = floatsPerVertex * 4
 const maxTextures = 4
 
+/**
+ * Whether a command can be drawn with the resources it references.
+ *
+ * Commands whose mesh, material or textures were destroyed while they were still
+ * referenced are skipped, so releasing a resource never aborts the frame and
+ * never hides the rest of the scene.
+ */
+function isRenderable(command: Draw2DCommand | Draw3DCommand): boolean {
+  if (command.mesh.destroyed || command.material.destroyed) return false
+
+  return command.material.textures.every((binding) => !binding.texture.destroyed)
+}
+
 function cameraPositionOf(context: DrawContext): Vector3 {
   const inverse = context.camera.view.invert()
   if (inverse === undefined) return new Vector3(0, 0, 0)
@@ -296,12 +309,14 @@ export class WebGlBackend extends RenderBackend {
           this.clear(command.color)
         } else if (command instanceof Draw2DCommand) {
           if (context === undefined) throw new Error('Drawing commands require a drawing context.')
+          if (!isRenderable(command)) continue
           const previous = batch[batch.length - 1]
           if (previous !== undefined && previous.material !== command.material) flush()
           batch.push(command)
         } else if (command instanceof Draw3DCommand) {
           flush()
           if (context === undefined) throw new Error('Drawing commands require a drawing context.')
+          if (!isRenderable(command)) continue
           this.draw3D(command, context)
         }
       }

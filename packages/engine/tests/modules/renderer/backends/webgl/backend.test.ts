@@ -267,11 +267,11 @@ describe('WebGlBackend', () => {
     material.destroy()
     expect(harness.gl.callsTo('deleteProgram').length).toBeGreaterThanOrEqual(1)
 
+    const draws = harness.gl.callsTo('drawElements').length
     backend.beginFrame()
-    expect(() => {
-      backend.render([createCommand(material)], createContext())
-    }).toThrow('material is destroyed')
+    backend.render([createCommand(material)], createContext())
     backend.endFrame()
+    expect(harness.gl.callsTo('drawElements')).toHaveLength(draws)
     backend.destroy()
   })
 
@@ -633,14 +633,14 @@ describe('WebGlBackend', () => {
     mesh.destroy()
 
     expect(harness.gl.callsTo('deleteVertexArray')).toHaveLength(1)
-    expect(() => {
-      backend.beginFrame()
-      backend.render(
-        [new Draw2DCommand({ mesh, material, transform: Matrix3x2.identity })],
-        createContext(),
-      )
-      backend.endFrame()
-    }).toThrow('mesh is destroyed')
+    const draws = harness.gl.callsTo('drawElements').length
+    backend.beginFrame()
+    backend.render(
+      [new Draw2DCommand({ mesh, material, transform: Matrix3x2.identity })],
+      createContext(),
+    )
+    backend.endFrame()
+    expect(harness.gl.callsTo('drawElements')).toHaveLength(draws)
     backend.destroy()
     material.destroy()
   })
@@ -809,20 +809,20 @@ describe('WebGlBackend', () => {
     mesh.destroy()
 
     expect(harness.gl.callsTo('deleteVertexArray')).toHaveLength(1)
-    expect(() => {
-      backend.beginFrame()
-      backend.render(
-        [
-          new Draw3DCommand({
-            mesh,
-            material: backend.default3DMaterial,
-            transform: Matrix4x4.identity,
-          }),
-        ],
-        create3DContext(),
-      )
-      backend.endFrame()
-    }).toThrow('mesh is destroyed')
+    const draws = harness.gl.callsTo('drawElements').length
+    backend.beginFrame()
+    backend.render(
+      [
+        new Draw3DCommand({
+          mesh,
+          material: backend.default3DMaterial,
+          transform: Matrix4x4.identity,
+        }),
+      ],
+      create3DContext(),
+    )
+    backend.endFrame()
+    expect(harness.gl.callsTo('drawElements')).toHaveLength(draws)
     backend.destroy()
   })
 
@@ -927,6 +927,55 @@ describe('WebGlBackend', () => {
     expect(outside).toHaveLength(0)
     box.destroy()
     sphere.destroy()
+    backend.destroy()
+  })
+
+  it('keeps drawing the rest of the scene when a mesh is destroyed', () => {
+    const { backend, harness } = createBackend()
+    const dead = createBoxMesh()
+    const alive = createBoxMesh()
+    const commands = [dead, alive].map(
+      (mesh) =>
+        new Draw3DCommand({
+          mesh,
+          material: backend.default3DMaterial,
+          transform: Matrix4x4.identity,
+        }),
+    )
+
+    dead.destroy()
+    backend.beginFrame()
+    backend.render(commands, create3DContext())
+    backend.endFrame()
+
+    expect(harness.gl.callsTo('drawElements')).toHaveLength(1)
+    expect(backend.stats.drawCalls).toBe(1)
+    alive.destroy()
+    backend.destroy()
+  })
+
+  it('skips commands whose textures were destroyed', () => {
+    const { backend, harness } = createBackend()
+    const image = new Image(2, 2, new Uint8Array(16))
+    const texture = new ImageTexture(image)
+    const material = createMaterial([new TextureBinding(texture, new TextureSampler())])
+    const commands = [
+      createCommand(material),
+      new Draw2DCommand({
+        mesh: createMesh(),
+        material: createMaterial(),
+        transform: Matrix3x2.identity,
+      }),
+    ]
+
+    texture.destroy()
+    backend.beginFrame()
+    backend.render(commands, createContext())
+    backend.endFrame()
+
+    expect(harness.gl.callsTo('drawElements')).toHaveLength(1)
+    image.destroy()
+    material.destroy()
     backend.destroy()
   })
 })
