@@ -52,14 +52,14 @@ export function createDefaultMaterial(textures?: Iterable<TextureBinding>): Grap
       language: ShaderLanguage.glsl,
       stage: ShaderStage.vertex,
       entryPoint: 'main',
-      path: 'fable://renderer/draw-2d.vert.glsl',
+      path: 'euphoria://renderer/draw-2d.vert.glsl',
     }),
     fragmentShader: new Shader({
       code: fragmentSource,
       language: ShaderLanguage.glsl,
       stage: ShaderStage.fragment,
       entryPoint: 'main',
-      path: 'fable://renderer/draw-2d.frag.glsl',
+      path: 'euphoria://renderer/draw-2d.frag.glsl',
     }),
     ...(textures === undefined ? {} : { textures }),
   })

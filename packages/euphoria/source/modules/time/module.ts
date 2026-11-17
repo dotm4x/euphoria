@@ -54,7 +54,7 @@ export class TimeModule extends Module {
     channels = [],
     maximumDeltaTime = 0.25,
   }: TimeModuleOptions = {}) {
-    super({ identifier: 'org.js.fable.TimeModule' })
+    super({ identifier: 'org.js.euphoria.TimeModule' })
     if (
       !Number.isFinite(targetUpdateRate) ||
       !Number.isFinite(maximumDeltaTime) ||

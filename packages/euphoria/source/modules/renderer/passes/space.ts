@@ -6,7 +6,7 @@ import { RenderContext } from '../context.js'
 import { RenderPass, type RenderPassContext, RenderPassPriority } from './pass.js'
 
 /** Identifier of the pass that draws registered spaces. */
-export const spaceRenderPassIdentifier = 'org.js.fable.SpaceRenderPass'
+export const spaceRenderPassIdentifier = 'org.js.euphoria.SpaceRenderPass'
 
 /**
  * Collects and draws every space of the frame in priority order.

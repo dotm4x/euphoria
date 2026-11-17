@@ -1,28 +1,28 @@
-name: Fable
+name: Euphoria
 
 on:
   push:
     paths:
-      - 'packages/fable/**'
+      - 'packages/euphoria/**'
       - 'sandbox/**'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
-      - '.github/workflows/fable.yml'
+      - '.github/workflows/euphoria.yml'
   pull_request:
     paths:
-      - 'packages/fable/**'
+      - 'packages/euphoria/**'
       - 'sandbox/**'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
-      - '.github/workflows/fable.yml'
+      - '.github/workflows/euphoria.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  fable:
-    name: Fable checks
+  euphoria:
+    name: Euphoria checks
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -43,16 +43,16 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Test
-        run: pnpm --filter @dotm4x/fable test
+        run: pnpm --filter @dotm4x/euphoria test
 
       - name: Type-check
-        run: pnpm --filter @dotm4x/fable typecheck
+        run: pnpm --filter @dotm4x/euphoria typecheck
 
       - name: Build
-        run: pnpm --filter @dotm4x/fable build
+        run: pnpm --filter @dotm4x/euphoria build
 
       - name: Install GPU test browser
-        run: pnpm --filter @fable/sandbox exec playwright install --with-deps chromium
+        run: pnpm --filter @euphoria/sandbox exec playwright install --with-deps chromium
 
       - name: GPU tests
-        run: pnpm --filter @fable/sandbox test:gpu
+        run: pnpm --filter @euphoria/sandbox test:gpu

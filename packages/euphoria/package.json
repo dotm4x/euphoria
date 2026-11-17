@@ -1,7 +1,7 @@
 {
-  "name": "@dotm4x/fable",
+  "name": "@dotm4x/euphoria",
   "version": "0.1.0",
-  "description": "Fable workspace package",
+  "description": "Euphoria workspace package",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

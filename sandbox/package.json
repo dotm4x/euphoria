@@ -1,19 +1,19 @@
 {
-  "name": "@fable/sandbox",
+  "name": "@euphoria/sandbox",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "pnpm --filter @dotm4x/fable build && tsc --noEmit -p tsconfig.json && vite build",
-    "dev": "pnpm --filter @dotm4x/fable build && vite",
+    "build": "pnpm --filter @dotm4x/euphoria build && tsc --noEmit -p tsconfig.json && vite build",
+    "dev": "pnpm --filter @dotm4x/euphoria build && vite",
     "start": "pnpm dev",
     "preview": "vite preview",
-    "typecheck": "pnpm --filter @dotm4x/fable build && tsc --noEmit -p tsconfig.json",
+    "typecheck": "pnpm --filter @dotm4x/euphoria build && tsc --noEmit -p tsconfig.json",
     "test:gpu": "playwright test",
     "bench": "node scripts/bench-balls.mjs"
   },
   "dependencies": {
-    "@dotm4x/fable": "workspace:*"
+    "@dotm4x/euphoria": "workspace:*"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.0",

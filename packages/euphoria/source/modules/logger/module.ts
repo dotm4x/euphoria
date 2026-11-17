@@ -33,7 +33,7 @@ export class LoggerModule extends Module {
   public readonly onLog: ReadOnlySignal<LogMessage> = this._onLog
 
   public constructor({ outputs = [] }: LoggerModuleOptions = {}) {
-    super({ identifier: 'org.js.fable.LoggerModule' })
+    super({ identifier: 'org.js.euphoria.LoggerModule' })
     this.outputs = new ReactiveSet(outputs)
   }
 

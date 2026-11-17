@@ -1,5 +1,5 @@
 {
-  "name": "fable",
+  "name": "euphoria",
   "private": true,
   "packageManager": "pnpm@12.18.0",
   "scripts": {

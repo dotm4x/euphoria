@@ -39,7 +39,7 @@ export class ScenesModule extends Module {
       declared.push({ type: LoggerModule, optional: true })
     }
 
-    super({ identifier: 'org.js.fable.ScenesModule', dependencies: declared })
+    super({ identifier: 'org.js.euphoria.ScenesModule', dependencies: declared })
     this._context = {
       require: <TModule extends Module>(type: ModuleType<TModule>): TModule => this.require(type),
       optional: <TModule extends Module>(type: ModuleType<TModule>): TModule | undefined =>

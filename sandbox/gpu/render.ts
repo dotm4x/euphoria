@@ -18,7 +18,7 @@ import {
   Vector2,
   Viewport,
   WebGlBackend,
-} from '@dotm4x/fable'
+} from '@dotm4x/euphoria'
 
 const canvas = document.querySelector('#scene')
 if (!(canvas instanceof HTMLCanvasElement)) {

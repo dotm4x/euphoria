@@ -1,4 +1,4 @@
-import { NodeRenderSpace, type RenderBackend, RendererModule } from '@dotm4x/fable'
+import { NodeRenderSpace, type RenderBackend, RendererModule } from '@dotm4x/euphoria'
 
 import { type MyScenesModule } from '../scenes/module.js'
 

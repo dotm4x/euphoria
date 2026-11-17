@@ -10,7 +10,7 @@ describe('JsonImporter', () => {
   it('supports json sources and parses bodies with fetch', async () => {
     const controller = new AbortController()
     const fetchMock = vi.fn(() =>
-      Promise.resolve(new Response(JSON.stringify({ name: 'fable', version: 1 }))),
+      Promise.resolve(new Response(JSON.stringify({ name: 'euphoria', version: 1 }))),
     )
     vi.stubGlobal('fetch', fetchMock)
 
@@ -18,7 +18,7 @@ describe('JsonImporter', () => {
     const imported = await importer.load('data.json', controller.signal)
 
     expect(importer.extensions).toEqual(['.json'])
-    expect(imported.value).toEqual({ name: 'fable', version: 1 })
+    expect(imported.value).toEqual({ name: 'euphoria', version: 1 })
     expect(fetchMock).toHaveBeenCalledExactlyOnceWith('data.json', { signal: controller.signal })
   })
 

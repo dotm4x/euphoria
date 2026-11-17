@@ -1,4 +1,4 @@
-import { Vector2 } from '@dotm4x/fable'
+import { Vector2 } from '@dotm4x/euphoria'
 
 /** Direction in which the snake moves. */
 export enum SnakeDirection {

@@ -28,7 +28,7 @@ export class InputModule extends Module {
   /** Borrowed input element. */
   public readonly target: HTMLElement
   public constructor({ target, devices = [] }: InputModuleOptions) {
-    super({ identifier: 'org.js.fable.InputModule' })
+    super({ identifier: 'org.js.euphoria.InputModule' })
     const initial = [...devices]
     const identifiers = initial.map((device) => device.identifier)
     if (new Set(identifiers).size !== identifiers.length) {

@@ -1,4 +1,4 @@
-import { Camera2D, type GraphicMaterial, type Node2D, ScenesModule } from '@dotm4x/fable'
+import { Camera2D, type GraphicMaterial, type Node2D, ScenesModule } from '@dotm4x/euphoria'
 
 import { MyInputModule } from '../input/module.js'
 

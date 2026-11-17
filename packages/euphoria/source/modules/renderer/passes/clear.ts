@@ -4,7 +4,7 @@ import { type RenderTarget } from '#/graphics/resources/targets/target.js'
 import { RenderPass, type RenderPassContext, RenderPassPriority } from './pass.js'
 
 /** Identifier of the pass that clears the drawing surfaces of a frame. */
-export const clearRenderPassIdentifier = 'org.js.fable.ClearRenderPass'
+export const clearRenderPassIdentifier = 'org.js.euphoria.ClearRenderPass'
 
 /**
  * Clears the window and every offscreen target used by the frame, once each.

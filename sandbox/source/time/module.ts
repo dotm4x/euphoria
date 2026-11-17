@@ -5,7 +5,7 @@ import {
   type ScenesModule,
   TimeModule,
   type Updatable,
-} from '@dotm4x/fable'
+} from '@dotm4x/euphoria'
 
 export class MyTimeModule extends TimeModule {
   public main: Channel

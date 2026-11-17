@@ -65,7 +65,7 @@ export class AssetsModule extends Module {
    * @throws {@link Error} If an importer is destroyed or repeats an identifier or extension.
    */
   public constructor({ importers = [] }: AssetsModuleOptions = {}) {
-    super({ identifier: 'org.js.fable.AssetsModule' })
+    super({ identifier: 'org.js.euphoria.AssetsModule' })
     const declared = [...importers]
     const identifiers = new Set<string>()
     const extensions = new Set<string>()

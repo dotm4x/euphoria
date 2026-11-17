@@ -62,7 +62,7 @@ export class RendererModule extends Module implements Updatable {
     passes = [],
     clearColor = Color.black,
   }: RendererModuleOptions) {
-    super({ identifier: 'org.js.fable.RendererModule' })
+    super({ identifier: 'org.js.euphoria.RendererModule' })
     this.backend = backend
     this.clearColor = new Store(clearColor)
     this._passes.add(new ClearRenderPass())
