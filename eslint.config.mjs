@@ -39,7 +39,11 @@ const namingConvention = [
     format: ['camelCase'],
     custom: { regex: '^(?:is|has|can|should)(?:[A-Z]|$)', match: false },
   },
-  { selector: ['variable', 'function', 'parameter', 'memberLike'], format: ['camelCase'] },
+  {
+    selector: ['variable', 'function', 'parameter', 'memberLike'],
+    format: ['camelCase'],
+    leadingUnderscore: 'allow',
+  },
 ]
 
 export default defineConfig(
@@ -103,7 +107,7 @@ export default defineConfig(
       'no-param-reassign': 'error',
       'no-unneeded-ternary': 'error',
       'no-unreachable': 'error',
-      'no-unused-vars': ['error', { args: 'all', caughtErrors: 'all' }],
+      'no-unused-vars': ['error', { args: 'all', argsIgnorePattern: '^_', caughtErrors: 'all' }],
       'no-var': 'error',
       'no-warning-comments': ['warn', { terms: ['todo', 'fixme'], location: 'start' }],
       'object-shorthand': 'error',
@@ -229,7 +233,10 @@ export default defineConfig(
       '@typescript-eslint/no-unnecessary-condition': 'error',
       '@typescript-eslint/no-unnecessary-type-assertion': 'error',
       '@typescript-eslint/no-unnecessary-type-parameters': 'error',
-      '@typescript-eslint/no-unused-vars': ['error', { args: 'all', caughtErrors: 'all' }],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { args: 'all', argsIgnorePattern: '^_', caughtErrors: 'all' },
+      ],
       '@typescript-eslint/only-throw-error': 'error',
       '@typescript-eslint/prefer-readonly': 'error',
       '@typescript-eslint/return-await': ['error', 'in-try-catch'],
