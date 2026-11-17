@@ -8,7 +8,7 @@ import {
   Vector2,
 } from '../../source/index.js'
 
-import { createContext, createMaterial } from './nodes/harness.js'
+import { createContext, createMaterial } from './nodes/2d/harness.js'
 
 describe('collectNodeCommands', () => {
   it('skips invisible and destroyed subtrees', () => {
