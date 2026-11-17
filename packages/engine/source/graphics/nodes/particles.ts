@@ -61,7 +61,6 @@ interface Particle {
   velocity: Vector2
   age: number
   lifetime: number
-  size: number
 }
 
 /**
@@ -220,7 +219,6 @@ export class ParticlesNode extends CanvasItem2D {
       velocity: new Vector2(Math.cos(angle) * velocity, Math.sin(angle) * velocity),
       age: 0,
       lifetime: lifetime.x + (lifetime.y - lifetime.x) * random(),
-      size: this._options.startSize,
     })
   }
 }

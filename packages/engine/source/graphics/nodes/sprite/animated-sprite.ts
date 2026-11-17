@@ -67,7 +67,10 @@ export class AnimatedSpriteNode extends CanvasItem2D {
   /** Whether the sprite is centered on its origin. */
   public readonly centered: boolean
 
-  /** Fired with the animation name when a non-looping animation ends. */
+  /**
+   * Fired with the animation name when it reaches its last frame, whether it
+   * loops or stops.
+   */
   public readonly onFinished: ReadOnlySignal<[animation: string]> = this._onFinished
 
   /**

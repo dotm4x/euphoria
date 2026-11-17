@@ -90,9 +90,10 @@ export class TrailNode extends CanvasItem2D {
   }
 
   /**
-   * Samples the followed node and forgets the tail.
+   * Samples the followed node and appends a point when it moved far enough.
    *
-   * @param context - Elapsed time since the previous update.
+   * @param context - Elapsed time since the previous update. Sampling does not
+   * depend on it, so the node also works with variable frame rates.
    */
   public update(_context: { readonly deltaTime: number }): void {
     const follow = this._follow
