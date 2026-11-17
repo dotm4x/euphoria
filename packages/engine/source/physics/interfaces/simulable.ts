@@ -1,0 +1,115 @@
+import { type SimulationData2D, type SimulationData3D } from '../data.js'
+import { type BodyState2D } from '../descriptors/2d/state.js'
+import { type BodyState3D } from '../descriptors/3d/state.js'
+
+import { type SimulationContext } from './context.js'
+
+/**
+ * An object that describes one or more bodies during a step.
+ *
+ * Simulables describe their physical representation without advancing the
+ * simulation or depending on a specific backend.
+ */
+export interface Simulable2D {
+  /**
+   * Stable identifier of the object.
+   *
+   * Backends use it to keep the state of the bodies an object produces between
+   * steps, so it must not change while the object exists.
+   */
+  readonly identifier: string
+
+  /**
+   * Produces the simulation data for this object.
+   *
+   * @param context - Step state available while producing the data.
+   * @returns The bodies this object contributes to the step.
+   */
+  simulate(context: SimulationContext): SimulationData2D
+
+  /**
+   * Receives the state resolved by the simulation.
+   *
+   * Objects that only describe bodies, such as area sensors, can omit it.
+   *
+   * @param state - The state of a body produced by this object.
+   */
+  applyState?(state: BodyState2D): void
+}
+
+/**
+ * An object that describes one or more bodies in space during a step.
+ *
+ * Simulables describe their physical representation without advancing the
+ * simulation or depending on a specific backend.
+ */
+export interface Simulable3D {
+  /**
+   * Stable identifier of the object.
+   *
+   * Backends use it to keep the state of the bodies an object produces between
+   * steps, so it must not change while the object exists.
+   */
+  readonly identifier: string
+
+  /**
+   * Produces the simulation data for this object.
+   *
+   * @param context - Step state available while producing the data.
+   * @returns The bodies this object contributes to the step.
+   */
+  simulate(context: SimulationContext): SimulationData3D
+
+  /**
+   * Receives the state resolved by the simulation.
+   *
+   * Objects that only describe bodies, such as area sensors, can omit it.
+   *
+   * @param state - The state of a body produced by this object.
+   */
+  applyState?(state: BodyState3D): void
+}
+
+/**
+ * Checks whether an object can describe bodies for a two-dimensional simulation.
+ *
+ * @param value - The object to inspect.
+ * @returns Whether the object implements {@link Simulable2D}.
+ */
+export function isSimulable2D(value: object): value is Simulable2D {
+  return 'simulate' in value && typeof value.simulate === 'function'
+}
+
+/**
+ * Checks whether an object can describe bodies for a three-dimensional simulation.
+ *
+ * @param value - The object to inspect.
+ * @returns Whether the object implements {@link Simulable3D}.
+ */
+export function isSimulable3D(value: object): value is Simulable3D {
+  return 'simulate' in value && typeof value.simulate === 'function'
+}
+
+/**
+ * Checks whether an object accepts the state resolved by a two-dimensional simulation.
+ *
+ * @param value - The object to inspect.
+ * @returns Whether the object implements `applyState`.
+ */
+export function acceptsState2D(
+  value: Simulable2D,
+): value is Simulable2D & { applyState(state: BodyState2D): void } {
+  return typeof value.applyState === 'function'
+}
+
+/**
+ * Checks whether an object accepts the state resolved by a three-dimensional simulation.
+ *
+ * @param value - The object to inspect.
+ * @returns Whether the object implements `applyState`.
+ */
+export function acceptsState3D(
+  value: Simulable3D,
+): value is Simulable3D & { applyState(state: BodyState3D): void } {
+  return typeof value.applyState === 'function'
+}
