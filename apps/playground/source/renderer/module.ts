@@ -2,6 +2,8 @@ import { NodeRenderSpace, type RenderBackend, RendererModule } from '@euphoria/e
 
 import { type MyScenesModule } from '../scenes/module.js'
 
+import { CameraBinding } from './camera-binding.js'
+
 /**
  * Draws the active scene, which owns its own viewport and post-processing
  * through the nodes of the scene tree.
@@ -13,7 +15,7 @@ export class MyRendererModule extends RendererModule {
       spaces: [
         new NodeRenderSpace({
           identifier: 'scene',
-          camera: scenes.camera,
+          camera: new CameraBinding(scenes.camera),
           scenes,
         }),
       ],

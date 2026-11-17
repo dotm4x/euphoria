@@ -23,7 +23,7 @@ export class Playground extends Game implements Updatable {
 
   public constructor(backend: RenderBackend, material: GraphicMaterial, assets: AssetsModule) {
     super()
-    this.scenes = new MyScenesModule(material, backend.defaultMaterial)
+    this.scenes = new MyScenesModule(material, backend.defaultMaterial, backend.default3DMaterial)
     this.time = new MyTimeModule(this, this.scenes)
     this.input = new MyInputModule({ target: document.body })
     this.renderer = new MyRendererModule(backend, this.scenes)
