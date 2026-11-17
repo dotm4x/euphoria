@@ -9,3 +9,4 @@ export {
   type SimulationStats,
 } from './backend.js'
 export { NullSimulationBackend } from './null.js'
+export { RapierBackend2D, type RapierBackend2DOptions } from './rapier2d/index.js'
