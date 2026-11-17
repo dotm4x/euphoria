@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { Node } from '../../../source/index.js'
+import { Game, Node, ScenesModule } from '../../../source/index.js'
 
 describe('Node', () => {
   it('manages ownership, searches and paths without permitting cycles', () => {
@@ -21,9 +21,6 @@ describe('Node', () => {
     expect(() => {
       root.add(leaf)
     }).toThrow('unowned')
-    expect(() => {
-      child.destroy()
-    }).toThrow('Detach')
     expect(root.remove(child)).toBe(true)
     expect(child.parent).toBeUndefined()
     root.destroy()
@@ -108,5 +105,36 @@ describe('Node', () => {
     child.destroy()
     root.unload()
     root.destroy()
+  })
+
+  it('detaches a child that is destroyed directly', () => {
+    const parent = new Node({ name: 'parent' })
+    const child = new Node({ name: 'child', children: [new Node({ name: 'leaf' })] })
+    parent.add(child)
+    parent.load()
+
+    child.destroy()
+
+    expect(child.destroyed).toBe(true)
+    expect(child.parent).toBeUndefined()
+    expect([...parent.children]).toHaveLength(0)
+    parent.destroy()
+  })
+
+  it('keeps an owned node intact when destruction is refused', () => {
+    const scene = new Node({ name: 'scene' })
+    const scenes = new ScenesModule({ initial: scene })
+    const game = new (class extends Game {})([scenes])
+    game.start()
+
+    expect(() => {
+      scene.destroy()
+    }).toThrow('owned')
+    expect(scene.destroyed).toBe(false)
+    expect(scene.name.value).toBe('scene')
+    expect(scene.loaded).toBe(true)
+
+    game.stop()
+    game.destroy()
   })
 })

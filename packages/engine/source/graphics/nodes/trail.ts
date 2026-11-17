@@ -135,10 +135,10 @@ export class TrailNode extends CanvasItem2D {
   }
 
   protected override onDestroy(): void {
+    super.onDestroy()
     this.clear()
     if (!this.width.destroyed) this.width.destroy()
     if (!this.minimumDistance.destroyed) this.minimumDistance.destroy()
     if (!this.color.destroyed) this.color.destroy()
-    super.onDestroy()
   }
 }

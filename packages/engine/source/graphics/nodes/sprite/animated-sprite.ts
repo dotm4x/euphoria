@@ -206,6 +206,7 @@ export class AnimatedSpriteNode extends CanvasItem2D {
   }
 
   protected override onDestroy(): void {
+    super.onDestroy()
     for (const mesh of this._meshes.values()) {
       if (!mesh.destroyed) mesh.destroy()
     }
@@ -215,6 +216,5 @@ export class AnimatedSpriteNode extends CanvasItem2D {
     if (!this.looping.destroyed) this.looping.destroy()
     if (!this.size.destroyed) this.size.destroy()
     if (!this._onFinished.destroyed) this._onFinished.destroy()
-    super.onDestroy()
   }
 }

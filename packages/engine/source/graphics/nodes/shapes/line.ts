@@ -79,11 +79,11 @@ export class LineNode extends CanvasItem2D {
   }
 
   protected override onDestroy(): void {
+    super.onDestroy()
     if (!this.points.destroyed) this.points.destroy()
     if (!this.width.destroyed) this.width.destroy()
     if (!this.closed.destroyed) this.closed.destroy()
     if (!this.joined.destroyed) this.joined.destroy()
-    super.onDestroy()
   }
 }
 

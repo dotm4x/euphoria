@@ -156,6 +156,7 @@ export class NinePatchNode extends CanvasItem2D {
   }
 
   protected override onDestroy(): void {
+    super.onDestroy()
     for (const mesh of this._meshes ?? []) {
       if (!mesh.destroyed) mesh.destroy()
     }
@@ -163,7 +164,6 @@ export class NinePatchNode extends CanvasItem2D {
     if (!this.size.destroyed) this.size.destroy()
     if (!this.region.destroyed) this.region.destroy()
     if (!this.insets.destroyed) this.insets.destroy()
-    super.onDestroy()
   }
 }
 

@@ -200,9 +200,9 @@ export class ParticlesNode extends CanvasItem2D {
   }
 
   protected override onDestroy(): void {
+    super.onDestroy()
     this._particles.length = 0
     if (!this.emitting.destroyed) this.emitting.destroy()
-    super.onDestroy()
   }
 
   private spawn(): void {

@@ -53,9 +53,9 @@ export class PolygonNode extends CanvasItem2D {
   }
 
   protected override onDestroy(): void {
+    super.onDestroy()
     if (this._mesh !== undefined && !this._mesh.destroyed) this._mesh.destroy()
     if (!this.polygon.destroyed) this.polygon.destroy()
-    super.onDestroy()
   }
 }
 

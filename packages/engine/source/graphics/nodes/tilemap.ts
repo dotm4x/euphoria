@@ -168,6 +168,7 @@ export class TilemapNode extends CanvasItem2D {
   }
 
   protected override onDestroy(): void {
+    super.onDestroy()
     for (const mesh of this._meshes.values()) {
       if (!mesh.destroyed) mesh.destroy()
     }
@@ -176,7 +177,6 @@ export class TilemapNode extends CanvasItem2D {
     this._tiles.clear()
     if (!this.tileset.destroyed) this.tileset.destroy()
     if (!this.culling.destroyed) this.culling.destroy()
-    super.onDestroy()
   }
 
   private index(column: number, row: number): number {

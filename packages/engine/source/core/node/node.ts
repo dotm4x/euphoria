@@ -355,10 +355,12 @@ export class Node extends Destroyable {
   }
 
   protected override onDestroy(): void {
-    if (this._owner !== undefined || this._parent !== undefined || this._transitioning) {
-      throw new Error('Detach the node from its owner before destroying it.')
+    if (this._owner !== undefined || this._transitioning) {
+      throw new Error('Node cannot be destroyed while owned or transitioning.')
     }
 
+    const parent = this._parent
+    if (parent !== undefined) parent.remove(this)
     if (this.loaded) this.unload()
     this._destroying = true
     try {

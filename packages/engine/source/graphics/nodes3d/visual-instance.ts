@@ -155,10 +155,9 @@ export abstract class VisualInstance3D extends Node3D implements Drawable {
   }
 
   protected override onDestroy(): void {
+    super.onDestroy()
     for (const store of [this.material, this.modulate, this.order, this.blend]) {
       if (!store.destroyed) store.destroy()
     }
-
-    super.onDestroy()
   }
 }

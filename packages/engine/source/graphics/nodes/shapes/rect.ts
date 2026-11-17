@@ -43,7 +43,7 @@ export class RectNode extends CanvasItem2D {
   }
 
   protected override onDestroy(): void {
-    if (!this.size.destroyed) this.size.destroy()
     super.onDestroy()
+    if (!this.size.destroyed) this.size.destroy()
   }
 }

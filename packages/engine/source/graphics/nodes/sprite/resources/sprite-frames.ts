@@ -77,7 +77,7 @@ export class SpriteFrames extends Resource {
   }
 
   protected override onDestroy(): void {
-    this._animations.clear()
     super.onDestroy()
+    this._animations.clear()
   }
 }

@@ -103,12 +103,11 @@ export abstract class Light3D extends Node3D {
   }
 
   protected override onDestroy(): void {
+    super.onDestroy()
     this.unregister()
     for (const store of [this.color, this.energy]) {
       if (!store.destroyed) store.destroy()
     }
-
-    super.onDestroy()
   }
 
   private register(): void {

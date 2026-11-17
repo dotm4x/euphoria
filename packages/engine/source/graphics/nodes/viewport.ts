@@ -120,9 +120,9 @@ export class ViewportNode extends CanvasItem2D implements RenderContainer {
   }
 
   protected override onDestroy(): void {
+    super.onDestroy()
     if (!this._material.destroyed) this._material.destroy()
     if (!this._target.destroyed) this._target.destroy()
     if (!this._size.destroyed) this._size.destroy()
-    super.onDestroy()
   }
 }

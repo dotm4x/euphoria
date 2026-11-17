@@ -87,14 +87,10 @@ describe('Node2D', () => {
     const node = new Node2D()
     const parent = new Node2D({ name: 'parent', children: [node] })
 
-    expect(() => {
-      node.destroy()
-    }).toThrow('Detach')
-
-    parent.remove(node)
     node.destroy()
 
     expect(node.destroyed).toBe(true)
+    expect(parent.children.has(node)).toBe(false)
     expect(node.origin.destroyed).toBe(true)
     expect(node.position.destroyed).toBe(true)
     expect(node.rotation.destroyed).toBe(true)

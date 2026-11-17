@@ -86,9 +86,9 @@ export class SpriteNode extends CanvasItem2D {
   }
 
   protected override onDestroy(): void {
+    super.onDestroy()
     if (this._mesh !== undefined && !this._mesh.destroyed) this._mesh.destroy()
     if (!this.size.destroyed) this.size.destroy()
     if (!this.region.destroyed) this.region.destroy()
-    super.onDestroy()
   }
 }

@@ -34,10 +34,10 @@ export class Environment3D extends Node3D {
   }
 
   protected override onDestroy(): void {
+    super.onDestroy()
     const environment = this.environment.value
     if (!this.environment.destroyed) this.environment.destroy()
     if (!environment.destroyed) environment.destroy()
-    super.onDestroy()
   }
 }
 

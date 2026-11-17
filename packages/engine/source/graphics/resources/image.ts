@@ -124,7 +124,7 @@ export class Image extends Resource {
   }
 
   protected override onDestroy(): void {
-    this._data = new Uint8Array(0)
     super.onDestroy()
+    this._data = new Uint8Array(0)
   }
 }

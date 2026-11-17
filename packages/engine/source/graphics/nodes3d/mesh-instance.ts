@@ -34,7 +34,7 @@ export class MeshInstance3D extends VisualInstance3D {
   }
 
   protected override onDestroy(): void {
-    if (!this.mesh.destroyed) this.mesh.destroy()
     super.onDestroy()
+    if (!this.mesh.destroyed) this.mesh.destroy()
   }
 }

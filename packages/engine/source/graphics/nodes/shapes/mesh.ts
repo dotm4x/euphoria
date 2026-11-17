@@ -32,7 +32,7 @@ export class MeshNode extends CanvasItem2D {
   }
 
   protected override onDestroy(): void {
-    if (!this.mesh.destroyed) this.mesh.destroy()
     super.onDestroy()
+    if (!this.mesh.destroyed) this.mesh.destroy()
   }
 }

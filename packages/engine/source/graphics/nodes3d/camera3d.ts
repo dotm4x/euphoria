@@ -111,11 +111,10 @@ export class Camera3D extends Node3D implements Camera {
   }
 
   protected override onDestroy(): void {
+    super.onDestroy()
     for (const store of [this.projection, this.fieldOfView, this.size, this.near, this.far]) {
       if (!store.destroyed) store.destroy()
     }
-
-    super.onDestroy()
   }
 }
 

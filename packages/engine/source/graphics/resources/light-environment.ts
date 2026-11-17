@@ -158,9 +158,9 @@ export class LightEnvironment extends Resource {
   }
 
   protected override onDestroy(): void {
+    super.onDestroy()
     this._directional = undefined
     this._punctual.length = 0
-    super.onDestroy()
   }
 
   private assertSlot(index: number): void {

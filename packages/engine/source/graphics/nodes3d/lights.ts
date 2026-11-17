@@ -77,8 +77,8 @@ export class OmniLight3D extends Light3D {
   }
 
   protected override onDestroy(): void {
-    if (!this.range.destroyed) this.range.destroy()
     super.onDestroy()
+    if (!this.range.destroyed) this.range.destroy()
   }
 }
 
@@ -119,7 +119,7 @@ export class SpotLight3D extends OmniLight3D {
   }
 
   protected override onDestroy(): void {
-    if (!this.angle.destroyed) this.angle.destroy()
     super.onDestroy()
+    if (!this.angle.destroyed) this.angle.destroy()
   }
 }
