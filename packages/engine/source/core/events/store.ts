@@ -35,12 +35,21 @@ export class Store<TValue> extends Event<StoreChange<TValue>> implements ReadOnl
     this._currentValue = value
   }
 
-  /** Gets or updates the stored value. */
+  /**
+   * Gets the stored value.
+   *
+   * Reading remains available after destruction, so the last value can still be
+   * inspected; only updates are rejected.
+   */
   public get value(): TValue {
-    this.throwIfDestroyed()
     return this._currentValue
   }
 
+  /**
+   * Updates the stored value.
+   *
+   * @throws {@link Error} If this store has been destroyed.
+   */
   public set value(nextValue: TValue) {
     this.throwIfDestroyed()
 

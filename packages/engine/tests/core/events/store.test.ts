@@ -79,4 +79,14 @@ describe('Store', () => {
       store.value = 3
     }).toThrow(Error)
   })
+
+  it('keeps the last value readable after destruction', () => {
+    const store = new Store(1)
+    store.value = 2
+
+    store.destroy()
+
+    expect(store.destroyed).toBe(true)
+    expect(store.value).toBe(2)
+  })
 })
