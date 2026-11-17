@@ -9,7 +9,9 @@ import {
   GraphicMaterial,
   GraphicMesh2D,
   GraphicVertex2D,
+  GroupNode,
   Matrix3x2,
+  RectNode,
   RenderContext,
   RenderSortMode,
   RenderSpace,
@@ -72,7 +74,13 @@ describe('RenderSpace', () => {
     })
   }
 
-  function commandAt(x: number, y: number, order: number = 0, depth: number = 0): Draw2DCommand {
+  function commandAt(
+    x: number,
+    y: number,
+    order: number = 0,
+    depth: number = 0,
+    material: GraphicMaterial = createMaterial(),
+  ): Draw2DCommand {
     const mesh = new GraphicMesh2D([
       new GraphicVertex2D(new Vector2(x - 10, y - 10), new Vector2(0, 0), Color.white),
       new GraphicVertex2D(new Vector2(x + 10, y - 10), new Vector2(1, 0), Color.white),
@@ -81,7 +89,7 @@ describe('RenderSpace', () => {
 
     return new Draw2DCommand({
       mesh,
-      material: createMaterial(),
+      material,
       transform: Matrix3x2.identity,
       order,
       depth,
@@ -123,7 +131,7 @@ describe('RenderSpace', () => {
     space.destroy()
   })
 
-  it('groups commands that share a material while preserving order', () => {
+  it('groups commands that share a material when batching is enabled', () => {
     const first = createMaterial()
     const second = createMaterial()
     const mesh = new GraphicMesh2D([
@@ -149,6 +157,7 @@ describe('RenderSpace', () => {
     const space = new RenderSpace({
       identifier: 'space',
       camera: new Camera2D(),
+      sort: RenderSortMode.batched,
       entries: [
         new CommandDrawable([firstCommand]),
         new CommandDrawable([secondCommand]),
@@ -264,5 +273,50 @@ describe('RenderSpace', () => {
 
     expect(depths).toEqual([3, 2, 1])
     space.destroy()
+  })
+
+  it('keeps the collection sequence when materials alternate', () => {
+    const first = createMaterial()
+    const second = createMaterial()
+    const space = new RenderSpace({
+      identifier: 'space',
+      camera: new Camera2D(),
+      entries: [
+        new CommandDrawable([commandAt(0, 0, 0, 0, first)]),
+        new CommandDrawable([commandAt(0, 0, 0, 0, second)]),
+        new CommandDrawable([commandAt(0, 0, 0, 0, first)]),
+      ],
+    })
+    const context = new RenderContext(
+      0,
+      new Camera2D(),
+      new Viewport(new Vector2(0, 0), new Vector2(640, 360)),
+    )
+
+    const collected = space.collect(context) as Draw2DCommand[]
+
+    expect(collected.map((command) => command.material)).toEqual([first, second, first])
+    space.destroy()
+  })
+
+  it('draws the children of an entry that is a node', () => {
+    const material = createMaterial()
+    const group = new GroupNode({ material })
+    group.add(new RectNode({ material }))
+    group.load()
+    const space = new RenderSpace({
+      identifier: 'space',
+      camera: new Camera2D(),
+      entries: [group],
+    })
+    const context = new RenderContext(
+      0,
+      new Camera2D(),
+      new Viewport(new Vector2(0, 0), new Vector2(640, 360)),
+    )
+
+    expect(space.collect(context)).toHaveLength(1)
+    space.destroy()
+    material.destroy()
   })
 })

@@ -1,6 +1,7 @@
 import { ReactiveSet } from '#/core/collections/reactive-set.js'
 import { Store } from '#/core/events/store.js'
 import { type Identifiable } from '#/core/interfaces/identifiable.js'
+import { Node } from '#/core/node/node.js'
 import { Destroyable } from '#/core/primitives/destroyable.js'
 import { Once } from '#/core/primitives/once.js'
 import { type DrawCommand } from '#/graphics/commands/command.js'
@@ -12,6 +13,7 @@ import { type Viewport } from '#/graphics/primitives/viewport.js'
 import { type BlendMode } from '#/graphics/resources/blend-mode.js'
 import { type GraphicMaterial } from '#/graphics/resources/material.js'
 import { type RenderTarget } from '#/graphics/resources/targets/target.js'
+import { collectNodeCommands } from '#/graphics/traversal.js'
 import { type Matrix4x4 } from '#/math/primitives/matrices/matrix4x4.js'
 import { Vector2 } from '#/math/primitives/vectors/vector2.js'
 import { Vector4 } from '#/math/primitives/vectors/vector4.js'
@@ -38,7 +40,10 @@ export interface RenderSpaceOptions {
   readonly target?: RenderTarget
   /** Whether commands outside the camera view are skipped. Defaults to true. */
   readonly cull?: boolean
-  /** Command ordering. Defaults to order. */
+  /**
+   * Command ordering. Defaults to {@link RenderSortMode.order}, which keeps the
+   * sequence produced by collection.
+   */
   readonly sort?: RenderSortMode
   /** Initial viewport, or undefined to cover the whole target. */
   readonly viewport?: Viewport
@@ -113,6 +118,9 @@ export class RenderSpace extends Destroyable implements Identifiable<string> {
   /**
    * Collects the commands produced by the space entries.
    *
+   * Entries that are nodes are traversed, so containers render their own
+   * children. The result is culled and ordered according to the space options.
+   *
    * @param context - Frame state offered to drawable entries.
    * @returns Commands in entry and command order.
    * @throws {@link Error} If the space is destroyed or an entry fails.
@@ -126,34 +134,48 @@ export class RenderSpace extends Destroyable implements Identifiable<string> {
 
     const commands: DrawCommand[] = []
     for (const entry of this.entries) {
-      commands.push(...entry.draw(context).commands)
+      if (entry instanceof Node) {
+        collectNodeCommands(entry, context, commands)
+      } else {
+        commands.push(...entry.draw(context).commands)
+      }
     }
 
+    return this.prepare(commands, context)
+  }
+
+  /**
+   * Culls and orders collected commands according to the space options.
+   *
+   * Subclasses that collect their own commands, such as node spaces, call this
+   * method to share the same options.
+   *
+   * @param commands - Commands to process, in collection order.
+   * @param context - Frame state used by culling and ordering.
+   * @returns The commands to draw, in execution order.
+   */
+  protected prepare(commands: readonly DrawCommand[], context: DrawContext): DrawCommand[] {
     const viewProjection = context.camera
       .getProjection(context.viewport)
       .multiply(context.camera.view)
     const visible = this.cull
       ? commands.filter((command) => this.isVisible(command, viewProjection))
-      : commands
-    const materials = new Map<GraphicMaterial, Map<BlendMode | undefined, number>>()
-    for (const command of visible) {
-      if (!(command instanceof Draw2DCommand)) continue
-      let blends = materials.get(command.material)
-      if (blends === undefined) {
-        blends = new Map<BlendMode | undefined, number>()
-        materials.set(command.material, blends)
-      }
-
-      if (!blends.has(command.blend)) blends.set(command.blend, materials.size)
-    }
+      : [...commands]
 
     const depth = this.sort === RenderSortMode.depth
-    visible.sort(
-      (left, right) =>
-        (depth ? depthOf(right) - depthOf(left) : 0) ||
-        orderOf(left) - orderOf(right) ||
-        materialOf(left, materials) - materialOf(right, materials),
-    )
+    const batches = this.sort === RenderSortMode.batched ? batchIndices(visible) : undefined
+    visible.sort((left, right) => {
+      if (depth) {
+        const difference = depthOf(right) - depthOf(left)
+        if (difference !== 0) return difference
+      }
+
+      const order = orderOf(left) - orderOf(right)
+      if (order !== 0) return order
+      if (batches === undefined) return 0
+
+      return (batches.get(left) ?? 0) - (batches.get(right) ?? 0)
+    })
 
     return visible
   }
@@ -207,13 +229,22 @@ function orderOf(command: DrawCommand): number {
   return command instanceof Draw2DCommand ? command.order : 0
 }
 
-function materialOf(
-  command: DrawCommand,
-  materials: ReadonlyMap<GraphicMaterial, ReadonlyMap<BlendMode | undefined, number>>,
-): number {
-  if (!(command instanceof Draw2DCommand)) return -1
+function batchIndices(commands: readonly DrawCommand[]): Map<DrawCommand, number> {
+  const materials = new Map<GraphicMaterial, Map<BlendMode | undefined, number>>()
+  const indices = new Map<DrawCommand, number>()
+  for (const command of commands) {
+    if (!(command instanceof Draw2DCommand)) continue
+    let blends = materials.get(command.material)
+    if (blends === undefined) {
+      blends = new Map<BlendMode | undefined, number>()
+      materials.set(command.material, blends)
+    }
 
-  return materials.get(command.material)?.get(command.blend) ?? 0
+    if (!blends.has(command.blend)) blends.set(command.blend, materials.size)
+    indices.set(command, blends.get(command.blend) ?? 0)
+  }
+
+  return indices
 }
 
 function depthOf(command: DrawCommand): number {

@@ -18,7 +18,9 @@ export interface NodeRenderSpaceOptions extends Omit<RenderSpaceOptions, 'entrie
  * Nodes are traversed in hierarchy order. Destroyed or invisible nodes are
  * skipped together with their subtrees. Nodes that render their own children,
  * such as sorted groups or viewports, control the drawing of their subtree.
- * The scenes module and its nodes are borrowed and never destroyed by this space.
+ * The collected commands are culled and ordered with the same options as any
+ * other space. The scenes module and its nodes are borrowed and never destroyed
+ * by this space.
  */
 export class NodeRenderSpace extends RenderSpace {
   private readonly _scenes: ScenesModule
@@ -37,6 +39,6 @@ export class NodeRenderSpace extends RenderSpace {
     const commands: DrawCommand[] = []
     collectNodeCommands(this._scenes.activeScene.value, context, commands)
 
-    return commands
+    return this.prepare(commands, context)
   }
 }
