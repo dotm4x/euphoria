@@ -13,7 +13,7 @@ import { MyRendererModule } from './renderer/module.js'
 import { MyScenesModule } from './scenes/module.js'
 import { MyTimeModule } from './time/module.js'
 
-export class Sandbox extends Game implements Updatable {
+export class Playground extends Game implements Updatable {
   public time: MyTimeModule
   public scenes: MyScenesModule
   public input: MyInputModule

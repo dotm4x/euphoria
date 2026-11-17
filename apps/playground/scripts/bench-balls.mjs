@@ -34,7 +34,7 @@ async function waitForServer(url) {
     await new Promise((resolve) => setTimeout(resolve, 250))
   }
 
-  throw new Error('The sandbox server did not start.')
+  throw new Error('The playground server did not start.')
 }
 
 function format(value, digits = 2) {

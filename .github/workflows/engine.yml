@@ -4,14 +4,14 @@ on:
   push:
     paths:
       - 'packages/engine/**'
-      - 'sandbox/**'
+      - 'apps/playground/**'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
       - '.github/workflows/engine.yml'
   pull_request:
     paths:
       - 'packages/engine/**'
-      - 'sandbox/**'
+      - 'apps/playground/**'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
       - '.github/workflows/engine.yml'
@@ -52,7 +52,7 @@ jobs:
         run: pnpm --filter @euphoria/engine build
 
       - name: Install GPU test browser
-        run: pnpm --filter @euphoria/sandbox exec playwright install --with-deps chromium
+        run: pnpm --filter @euphoria/playground exec playwright install --with-deps chromium
 
       - name: GPU tests
-        run: pnpm --filter @euphoria/sandbox test:gpu
+        run: pnpm --filter @euphoria/playground test:gpu

@@ -10,7 +10,7 @@ import {
   WebGlBackend,
 } from '@euphoria/engine'
 
-import { Sandbox } from './sandbox.js'
+import { Playground } from './playground.js'
 import { type BallsBenchmark } from './scenes/bench/scene.js'
 
 declare global {
@@ -21,7 +21,7 @@ declare global {
 
 const element = document.querySelector('canvas')
 if (!(element instanceof HTMLCanvasElement)) {
-  throw new Error('The sandbox canvas is missing.')
+  throw new Error('The playground canvas is missing.')
 }
 
 const canvas: HTMLCanvasElement = element
@@ -51,7 +51,7 @@ async function main(): Promise<void> {
   const backend = selectBackend()
   const assets = new AssetsModule({ importers: [new ImageImporter()] })
   const material = await createMaterial(backend, assets)
-  const game = new Sandbox(backend, material, assets)
+  const game = new Playground(backend, material, assets)
   game.start()
   game.time.run()
   measureRender(game)
@@ -71,7 +71,7 @@ async function main(): Promise<void> {
   })
 }
 
-function measureRender(game: Sandbox): void {
+function measureRender(game: Playground): void {
   const params = new URLSearchParams(globalThis.location.search)
   const backend = game.renderer.backend
   if (params.get('bench') !== 'render' || !(backend instanceof WebGlBackend)) return

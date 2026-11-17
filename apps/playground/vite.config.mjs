@@ -6,7 +6,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@euphoria/engine': fileURLToPath(
-        new URL('../packages/engine/source/index.ts', import.meta.url),
+        new URL('../../packages/engine/source/index.ts', import.meta.url),
       ),
     },
   },

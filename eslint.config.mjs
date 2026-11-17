@@ -71,7 +71,7 @@ export default defineConfig(
       ...importPlugin.flatConfigs.typescript.settings,
       'import-x/resolver': {
         typescript: {
-          project: ['tsconfig.json', 'packages/*/tsconfig.json'],
+          project: ['tsconfig.json', 'packages/*/tsconfig.json', 'apps/*/tsconfig.json'],
           noWarnOnMultipleProjects: true,
         },
         node: true,
