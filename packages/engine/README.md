@@ -32,6 +32,9 @@ project can grow without switching tools or rewriting its foundation.
 > depth and dynamic lights; shadows, image-based lighting and advanced
 > materials are still being built.
 >
+> Physics runs through the simulation module in two and three dimensions, with
+> bodies, colliders, sensors, joints, contacts and ray casts resolved by Rapier.
+>
 > More information will be added as the engine progresses.
 
 ## License
