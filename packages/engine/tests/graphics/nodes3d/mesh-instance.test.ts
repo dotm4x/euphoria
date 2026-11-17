@@ -95,4 +95,17 @@ describe('MeshInstance3D', () => {
     node.destroy()
     mesh.destroy()
   })
+
+  it('stops drawing once its mesh is destroyed', () => {
+    const material = createMaterial()
+    const mesh = createBoxMesh()
+    const node = new MeshInstance3D({ material, mesh })
+
+    expect(node.draw(createContext()).commands).toHaveLength(1)
+    mesh.destroy()
+
+    expect(node.draw(createContext()).commands).toHaveLength(0)
+    node.destroy()
+    material.destroy()
+  })
 })

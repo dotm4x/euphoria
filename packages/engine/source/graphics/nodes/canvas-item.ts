@@ -138,7 +138,7 @@ export abstract class CanvasItem2D extends Node2D implements Drawable {
    */
   protected collectDraw(commands: Draw2DCommand[]): void {
     const mesh = this.shapeMesh
-    if (mesh === undefined) return
+    if (mesh === undefined || mesh.destroyed) return
     commands.push(this.createCommand(mesh))
   }
 

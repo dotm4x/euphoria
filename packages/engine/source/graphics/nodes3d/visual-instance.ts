@@ -83,7 +83,7 @@ export abstract class VisualInstance3D extends Node3D implements Drawable {
    */
   protected collectDraw(commands: Draw3DCommand[]): void {
     const mesh = this.shapeMesh
-    if (mesh === undefined) return
+    if (mesh === undefined || mesh.destroyed) return
     commands.push(this.createCommand(mesh))
   }
 

@@ -102,6 +102,7 @@ export class MultiMeshNode extends CanvasItem2D {
 
   /** @inheritDoc */
   protected override collectDraw(commands: Draw2DCommand[]): void {
+    if (this.mesh.destroyed) return
     for (let index = 0; index < this._activeCount; index++) {
       const transform = this._transforms[index]
       if (transform === undefined) continue
