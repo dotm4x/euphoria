@@ -27,6 +27,10 @@ export class NodeChannel extends Channel {
   }
 
   protected override onUpdate(context: UpdateContext): void {
+    if (this._manager.destroyed) {
+      throw new Error('NodeChannel cannot update from a destroyed scenes module.')
+    }
+
     this.visit(this._manager.activeScene.value, context)
   }
 
