@@ -1,3 +1,5 @@
+import { Resource } from '#/core/primitives/resource.js'
+
 /**
  * Indexed triangle geometry composed of vertices of a specific type.
  *
@@ -7,7 +9,7 @@
  *
  * @typeParam TVertex - The type used to represent each vertex.
  */
-export abstract class Mesh<TVertex> {
+export abstract class Mesh<TVertex> extends Resource {
   /** Vertex indices ordered in groups of three. */
   public readonly indices: readonly number[]
 
@@ -22,6 +24,7 @@ export abstract class Mesh<TVertex> {
    * an integer, or an index refers to a vertex outside the mesh.
    */
   protected constructor(vertices: Iterable<TVertex>, indices?: Iterable<number> | null) {
+    super()
     const vertexList = Object.freeze([...vertices])
     const indexList = Object.freeze(
       indices === undefined || indices === null
