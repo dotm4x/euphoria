@@ -1,11 +1,10 @@
 import { Store } from '#/core/events/store.js'
-import { type Node } from '#/core/node/node.js'
-import { Node3D, type Node3DOptions } from '#/math/nodes/node3d.js'
+import { Node, type NodeOptions } from '#/core/node/node.js'
 
 import { LightEnvironment } from '../../resources/light-environment.js'
 
 /** Configuration for the environment node. */
-export interface Environment3DOptions extends Node3DOptions {
+export interface Environment3DOptions extends NodeOptions {
   /** Environment to expose, whose ownership transfers to the node. Defaults to a new one. */
   readonly environment?: LightEnvironment
 }
@@ -16,9 +15,10 @@ export interface Environment3DOptions extends Node3DOptions {
  * Visual nodes and light nodes resolve the nearest `Environment3D` ancestor, so
  * grouping a scene under one environment styles every mesh inside it. The
  * environment is a resource and the node only exposes it: no space, pass or
- * traversal needs to know about lighting.
+ * traversal needs to know about lighting. The node contributes no transform, so
+ * it can wrap scene roots, including bodies simulated in world space.
  */
-export class Environment3D extends Node3D {
+export class Environment3D extends Node {
   /** Environment exposed to the subtree. */
   public readonly environment: Store<LightEnvironment>
 
