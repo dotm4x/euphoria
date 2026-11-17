@@ -6,4 +6,4 @@ export {
 } from './message.js'
 export { LoggerModule, type LoggerModuleOptions } from './module.js'
 export * from './outputs/index.js'
-export { SourcedLogger } from './sourced-logger.js'
+export { SourcedLogger } from './sourced.js'

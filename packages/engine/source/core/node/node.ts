@@ -4,11 +4,7 @@ import { type Module, type ModuleType } from '../module.js'
 import { Destroyable } from '../primitives/destroyable.js'
 import { Once } from '../primitives/once.js'
 
-import {
-  createNodeReactiveSet,
-  type NodeReactiveSet,
-  nodeSetLifecycle,
-} from './node-reactive-set.js'
+import { createNodeReactiveSet, type NodeReactiveSet, nodeSetLifecycle } from './reactive-set.js'
 
 /** Configuration for a node and its initially owned children. */
 export interface NodeOptions {

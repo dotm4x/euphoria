@@ -5,7 +5,7 @@ import { Once } from '#/core/primitives/once.js'
 
 import { type LogMessage, LogMessageKind, type LogOptions } from './message.js'
 import { type LogOutput } from './outputs/output.js'
-import { SourcedLogger } from './sourced-logger.js'
+import { SourcedLogger } from './sourced.js'
 
 /** Configuration for a logger. */
 export interface LoggerModuleOptions {
