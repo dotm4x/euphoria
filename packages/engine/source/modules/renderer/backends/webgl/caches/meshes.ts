@@ -43,17 +43,14 @@ export class GlMeshes {
       vertices[offset + 7] = vertex.color.a
     })
     const indices = new Uint32Array(mesh.indices)
+    const vertexArray = required(gl.createVertexArray(), 'Unable to create a vertex array.')
+    gl.bindVertexArray(vertexArray)
     const vertexBuffer = required(gl.createBuffer(), 'Unable to create a vertex buffer.')
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
     gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW)
     const indexBuffer = required(gl.createBuffer(), 'Unable to create an index buffer.')
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer)
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW)
-
-    const vertexArray = required(gl.createVertexArray(), 'Unable to create a vertex array.')
-    gl.bindVertexArray(vertexArray)
-    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer)
     this.configureAttributes(gl)
     gl.bindVertexArray(null)
 
