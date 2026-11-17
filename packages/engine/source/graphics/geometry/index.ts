@@ -1,3 +1,6 @@
 export { GraphicMesh2D } from './mesh2d.js'
+export { GraphicMesh3D } from './mesh3d.js'
+export { createBoxMesh, createPlaneMesh, createSphereMesh } from './primitives3d.js'
 export { createQuadMesh, unitQuadMesh } from './quad.js'
 export { GraphicVertex2D } from './vertex2d.js'
+export { Vertex3D } from './vertex3d.js'
