@@ -31,6 +31,14 @@ export class MyKeyboard extends Keyboard {
     source: 'KeyR',
   })
 
+  public q: KeyboardInputEvent = new KeyboardInputEvent({ identifier: 'q', source: 'KeyQ' })
+  public e: KeyboardInputEvent = new KeyboardInputEvent({ identifier: 'e', source: 'KeyE' })
+
+  public boost: KeyboardInputEvent = new KeyboardInputEvent({
+    identifier: 'boost',
+    source: 'ShiftLeft',
+  })
+
   protected override *compose(): Generator<KeyboardInputEvent> {
     yield this.up
     yield this.down
@@ -42,5 +50,8 @@ export class MyKeyboard extends Keyboard {
     yield this.d
     yield this.space
     yield this.restart
+    yield this.q
+    yield this.e
+    yield this.boost
   }
 }
