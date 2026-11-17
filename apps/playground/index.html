@@ -15,6 +15,15 @@
         border-radius: 6px;
         display: block;
       }
+      nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        margin-block: 1rem;
+      }
+      nav a {
+        color: #7fb0ff;
+      }
     </style>
   </head>
   <body>
@@ -28,7 +37,12 @@
       <p>FPS: <output id="fps">0</output></p>
       <p>Score: <output id="score">0</output></p>
       <p id="status"></p>
-      <p><a href="?scene=snake">Play Snake</a> · <a href="./">Rendering demo</a></p>
+      <nav aria-label="Scenes">
+        <a href="./">Rendering demo</a> · <a href="?scene=snake">Play Snake</a> ·
+        <a href="?scene=cube">3D cube</a> ·
+        <a href="?scene=balls&amp;mode=single&amp;count=1000">Benchmark: 1k balls</a> ·
+        <a href="?scene=balls&amp;mode=single&amp;count=10000">10k balls</a>
+      </nav>
       <button id="toggle" type="button">Pause</button>
     </main>
     <script type="module" src="/source/index.ts"></script>
