@@ -1,4 +1,5 @@
 export * from './blend-mode.js'
+export * from './font.js'
 export * from './image.js'
 export * from './light-environment.js'
 export * from './material.js'

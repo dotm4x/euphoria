@@ -17,8 +17,12 @@ project can grow without switching tools or rewriting its foundation.
   installations, on top of modern graphics APIs.
 - **Composition over boilerplate** — Scenes are trees of nodes, and cameras,
   layers, effects and viewports are all nodes you can combine.
-- **One asset pipeline** — Images, audio, shaders, text and binary data load,
-  cache and reload through a common system.
+- **One asset pipeline** — Images, audio, fonts, shaders, text and binary data
+  load, cache and reload through a common system.
+- **Text with real fonts** — Font files rasterize once into an atlas, and text
+  nodes lay them out with alignment, wrapping and scaling in two or three
+  dimensions. Runs mix fonts, sizes and colors on the same line, so a bold word
+  or a colored number costs no extra material.
 - **Built for real games** — Input, timing, scenes, rendering, audio and asset
   management ship together, with the same code in development and in production.
 - **Sound that follows the scene** — Music, interface sounds and placed emitters
@@ -41,6 +45,10 @@ project can grow without switching tools or rewriting its foundation.
 > Audio plays through the playback module over the Web Audio API, with placed
 > planar and spatial emitters, mixing buses and a null backend for servers and
 > tests.
+>
+> Text draws from font atlases built through the Canvas API, with wrapping,
+> alignment and scaling. Rich text styles and signed distance fields are still
+> being built.
 >
 > More information will be added as the engine progresses.
 
