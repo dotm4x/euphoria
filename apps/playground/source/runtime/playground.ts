@@ -1,5 +1,6 @@
 import {
   type AssetsModule,
+  type Color,
   Game,
   type RenderBackend,
   type SimulationBackend,
@@ -8,6 +9,7 @@ import {
 } from '@euphoria/engine'
 
 import { PlaygroundInputModule } from './input/module.js'
+import { PlaygroundPlaybackModule } from './playback/module.js'
 import { PlaygroundRendererModule } from './renderer/module.js'
 import { type StoryScene } from './scene.js'
 import { PlaygroundScenesModule } from './scenes/module.js'
@@ -25,6 +27,8 @@ export interface PlaygroundOptions {
   readonly scene: StoryScene
   /** Simulation backends, owned by the simulation module. */
   readonly physics: readonly SimulationBackend[]
+  /** Background the canvas is cleared with. */
+  readonly background?: Color | undefined
   /** Receives the metrics of every rendered frame. */
   readonly onStats?: ((stats: RuntimeStats) => void) | undefined
 }
@@ -56,6 +60,9 @@ export class Playground extends Game implements Updatable {
   /** Renderer that draws the active scene. */
   public readonly renderer: PlaygroundRendererModule
 
+  /** Playback module that sounds the story. */
+  public readonly playback: PlaygroundPlaybackModule
+
   /** Scenes module that owns the story scene. */
   public readonly scenes: PlaygroundScenesModule
 
@@ -68,7 +75,7 @@ export class Playground extends Game implements Updatable {
   /**
    * @param options - Story scene, already loaded assets, backend and statistics sink.
    */
-  public constructor({ backend, assets, scene, physics, onStats }: PlaygroundOptions) {
+  public constructor({ backend, assets, scene, physics, background, onStats }: PlaygroundOptions) {
     super()
     this._scene = scene
     this._onStats = onStats
@@ -77,7 +84,8 @@ export class Playground extends Game implements Updatable {
     this.simulation = new PlaygroundSimulationModule({ scene, physics })
     this.time = new PlaygroundTimeModule({ game: this })
     this.input = new PlaygroundInputModule()
-    this.renderer = new PlaygroundRendererModule({ backend })
+    this.playback = new PlaygroundPlaybackModule({ scene: scene.node, muted: false })
+    this.renderer = new PlaygroundRendererModule({ backend, background })
   }
 
   /** Scene description published by the render benchmark, when requested. */
@@ -113,6 +121,7 @@ export class Playground extends Game implements Updatable {
     yield this.scenes
     yield this.input
     yield this.simulation
+    yield this.playback
     yield this.renderer
     yield this.assets
   }
@@ -133,5 +142,6 @@ type PlaygroundModule =
   | PlaygroundScenesModule
   | PlaygroundInputModule
   | PlaygroundSimulationModule
+  | PlaygroundPlaybackModule
   | PlaygroundRendererModule
   | AssetsModule

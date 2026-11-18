@@ -44,6 +44,21 @@ export class MyKeyboard extends Keyboard {
     source: 'KeyF',
   })
 
+  public coin: KeyboardInputEvent = new KeyboardInputEvent({
+    identifier: 'coin',
+    source: 'KeyC',
+  })
+
+  public thud: KeyboardInputEvent = new KeyboardInputEvent({
+    identifier: 'thud',
+    source: 'KeyT',
+  })
+
+  public mute: KeyboardInputEvent = new KeyboardInputEvent({
+    identifier: 'mute',
+    source: 'KeyM',
+  })
+
   protected override *compose(): Generator<KeyboardInputEvent> {
     yield this.up
     yield this.down
@@ -59,5 +74,8 @@ export class MyKeyboard extends Keyboard {
     yield this.e
     yield this.boost
     yield this.debug
+    yield this.coin
+    yield this.thud
+    yield this.mute
   }
 }

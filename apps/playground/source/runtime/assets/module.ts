@@ -1,4 +1,4 @@
-import { AssetsModule, ImageImporter } from '@euphoria/engine'
+import { AssetsModule, AudioClipImporter, ImageImporter } from '@euphoria/engine'
 
 /**
  * Assets module of the playground.
@@ -10,6 +10,6 @@ import { AssetsModule, ImageImporter } from '@euphoria/engine'
  */
 export class PlaygroundAssetsModule extends AssetsModule {
   public constructor() {
-    super({ importers: [new ImageImporter()] })
+    super({ importers: [new ImageImporter(), new AudioClipImporter()] })
   }
 }

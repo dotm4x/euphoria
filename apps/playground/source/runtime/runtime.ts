@@ -1,5 +1,6 @@
 import {
   type AssetsModule,
+  type Color,
   Dimension,
   type GraphicMaterial,
   RapierBackend2D,
@@ -36,14 +37,16 @@ export interface SceneContext {
 export interface RuntimeOptions {
   /** Element that receives the canvas and the statistics panel. */
   readonly container: HTMLElement
-  /** Builds the scene of the story. */
-  readonly scene: (context: SceneContext) => StoryScene
+  /** Builds the scene of the story, once its assets are available. */
+  readonly scene: (context: SceneContext) => Promise<StoryScene> | StoryScene
   /** Dimensions that need a simulation backend; defaults to none. */
   readonly physics?: readonly Dimension[]
   /** Canvas width in pixels; defaults to `640`. */
   readonly width?: number
   /** Canvas height in pixels; defaults to `360`. */
   readonly height?: number
+  /** Background the canvas is cleared with; defaults to black. */
+  readonly background?: Color | undefined
 }
 
 const defaultWidth = 640
@@ -62,6 +65,7 @@ export class PlaygroundRuntime {
   private readonly _game: Playground
   private readonly _materials: SceneMaterials
   private readonly _panel: StatsPanel
+  private readonly _resume: () => void
   private _state: 'idle' | 'running' | 'paused' = 'idle'
 
   private constructor(
@@ -75,6 +79,15 @@ export class PlaygroundRuntime {
     this._game = game
     this._materials = materials
     this._panel.onToggle = () => this.toggle()
+    // Browsers keep audio suspended until a gesture, and they may refuse the
+    // first one, so every gesture retries until the device is running.
+    this._resume = () => {
+      if (this._game.playback.deviceState.value === 'running') return
+      void this._game.playback.resume().catch(() => undefined)
+    }
+
+    window.addEventListener('pointerdown', this._resume)
+    window.addEventListener('keydown', this._resume)
   }
 
   /** Engine of the story, for stories that need its modules. */
@@ -107,7 +120,7 @@ export class PlaygroundRuntime {
     const materials = await createSceneMaterials(backend, assets)
     const physics = await createPhysics(options.physics ?? [])
     const panel = new StatsPanel(options.container)
-    const scene = options.scene({
+    const scene = await options.scene({
       backend,
       assets,
       canvas,
@@ -120,6 +133,7 @@ export class PlaygroundRuntime {
       assets,
       scene,
       physics,
+      background: options.background,
       onStats: (stats) => {
         panel.update(stats)
       },
@@ -168,6 +182,8 @@ export class PlaygroundRuntime {
   public dispose(): void {
     if (this._state === 'running') this._game.stop()
     this._state = 'idle'
+    window.removeEventListener('pointerdown', this._resume)
+    window.removeEventListener('keydown', this._resume)
     if (!this._game.destroyed) this._game.destroy()
     this._materials.dispose()
     this.releaseCanvas()

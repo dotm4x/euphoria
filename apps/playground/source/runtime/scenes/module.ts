@@ -1,4 +1,4 @@
-import { type Camera, type Node, ScenesModule, Store } from '@euphoria/engine'
+import { type Camera, type Node, PlaybackModule, ScenesModule, Store } from '@euphoria/engine'
 
 import { PlaygroundInputModule } from '../input/module.js'
 
@@ -18,7 +18,10 @@ export class PlaygroundScenesModule extends ScenesModule {
    * @param camera - Camera used to draw the scene.
    */
   public constructor(scene: Node, camera: Camera) {
-    super({ initial: scene, dependencies: [{ type: PlaygroundInputModule }] })
+    super({
+      initial: scene,
+      dependencies: [{ type: PlaygroundInputModule }, { type: PlaybackModule }],
+    })
     this.camera = new Store(camera)
   }
 

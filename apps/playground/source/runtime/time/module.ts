@@ -1,5 +1,6 @@
 import { Channel, ChannelPriority, NodeChannel, TimeModule, type Updatable } from '@euphoria/engine'
 
+import { PlaygroundPlaybackModule } from '../playback/module.js'
 import { PlaygroundScenesModule } from '../scenes/module.js'
 import { PlaygroundSimulationModule } from '../simulation/module.js'
 
@@ -27,7 +28,11 @@ export class PlaygroundTimeModule extends TimeModule {
    */
   public constructor({ game, targetUpdateRate = 60 }: PlaygroundTimeOptions) {
     super({
-      dependencies: [{ type: PlaygroundScenesModule }, { type: PlaygroundSimulationModule }],
+      dependencies: [
+        { type: PlaygroundScenesModule },
+        { type: PlaygroundSimulationModule },
+        { type: PlaygroundPlaybackModule },
+      ],
     })
     this._game = game
     this._targetUpdateRate = targetUpdateRate
@@ -51,6 +56,12 @@ export class PlaygroundTimeModule extends TimeModule {
       targetUpdateRate: 0,
       priority: ChannelPriority.low,
       entries: [this.require(PlaygroundSimulationModule)],
+    })
+    yield new Channel({
+      identifier: 'audio',
+      targetUpdateRate: 0,
+      priority: ChannelPriority.high,
+      entries: [this.require(PlaygroundPlaybackModule)],
     })
   }
 }

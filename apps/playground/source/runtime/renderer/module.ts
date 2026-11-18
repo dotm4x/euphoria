@@ -1,4 +1,5 @@
 import {
+  type Color,
   NodeRenderSpace,
   type RenderBackend,
   RendererModule,
@@ -13,6 +14,8 @@ import { CameraBinding } from './camera-binding.js'
 export interface PlaygroundRendererOptions {
   /** Backend that draws the scenes, owned by the module. */
   readonly backend: RenderBackend
+  /** Background the canvas is cleared with; defaults to black. */
+  readonly background?: Color | undefined
 }
 
 /**
@@ -25,8 +28,12 @@ export class PlaygroundRendererModule extends RendererModule {
   /**
    * @param options - Backend that draws the scenes.
    */
-  public constructor({ backend }: PlaygroundRendererOptions) {
-    super({ backend, dependencies: [{ type: PlaygroundScenesModule }] })
+  public constructor({ backend, background }: PlaygroundRendererOptions) {
+    super({
+      backend,
+      dependencies: [{ type: PlaygroundScenesModule }],
+      ...(background === undefined ? {} : { clearColor: background }),
+    })
   }
 
   protected override *compose(): Generator<RenderSpace, void, unknown> {
