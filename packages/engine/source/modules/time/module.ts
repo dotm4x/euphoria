@@ -1,5 +1,5 @@
 import { IdentifiableSet } from '#/core/collections/identifiable-set.js'
-import { Module, ModuleState } from '#/core/module.js'
+import { Module, type ModuleDependency, ModuleState } from '#/core/module.js'
 import { Once } from '#/core/primitives/once.js'
 
 import { type Channel } from './channels/channel.js'
@@ -12,6 +12,8 @@ export interface TimeModuleOptions {
   readonly channels?: Iterable<Channel>
   /** Maximum elapsed time reported per iteration, in seconds. Defaults to 0.25. */
   readonly maximumDeltaTime?: number
+  /** Required and optional module dependencies. */
+  readonly dependencies?: Iterable<ModuleDependency>
 }
 
 /**
@@ -53,8 +55,9 @@ export class TimeModule extends Module {
     targetUpdateRate = 60,
     channels = [],
     maximumDeltaTime = 0.25,
+    dependencies = [],
   }: TimeModuleOptions = {}) {
-    super({ identifier: 'org.js.euphoria.TimeModule' })
+    super({ identifier: 'org.js.euphoria.TimeModule', dependencies })
     if (
       !Number.isFinite(targetUpdateRate) ||
       !Number.isFinite(maximumDeltaTime) ||

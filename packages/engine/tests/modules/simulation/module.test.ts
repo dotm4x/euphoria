@@ -16,6 +16,18 @@ import {
 
 class TestGame extends Game {}
 
+class ComposingModule extends SimulationModule {
+  public configured: boolean = false
+
+  protected override *compose(): Generator<SimulationSpace2D, void, unknown> {
+    yield new SimulationSpace2D({ identifier: 'composed' })
+  }
+
+  protected override configure(): void {
+    this.configured = true
+  }
+}
+
 class RecordingBackend extends SimulationBackend2D {
   public override readonly dimension: Dimension = Dimension.twoDimensional
   public readonly events: string[] = []
@@ -150,5 +162,20 @@ describe('SimulationModule', () => {
 
     expect(space.destroyed).toBe(true)
     expect(backend.destroyed).toBe(true)
+  })
+
+  it('registers the spaces it composes when it starts', () => {
+    const backend = new RecordingBackend()
+    const module = new ComposingModule({ backends: [backend] })
+    const game = new TestGame([module])
+
+    game.start()
+
+    const composed = module.spaces.get('composed')
+    expect(composed).toBeInstanceOf(SimulationSpace2D)
+    expect(module.configured).toBe(true)
+    game.stop()
+    game.destroy()
+    expect(composed?.destroyed).toBe(true)
   })
 })

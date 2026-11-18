@@ -1,5 +1,6 @@
 import { IdentifiableSet } from '#/core/collections/identifiable-set.js'
-import { Module, ModuleState } from '#/core/module.js'
+import { Module, type ModuleDependency, ModuleState } from '#/core/module.js'
+import { Once } from '#/core/primitives/once.js'
 import { type Dimension } from '#/physics/primitives/dimension.js'
 
 import { type UpdateContext } from '../time/context.js'
@@ -20,6 +21,8 @@ export interface SimulationModuleOptions {
   readonly backends?: Iterable<SimulationBackend>
   /** Spaces whose ownership transfers to the module. */
   readonly spaces?: Iterable<SimulationSpace>
+  /** Required and optional module dependencies. */
+  readonly dependencies?: Iterable<ModuleDependency>
 }
 
 /**
@@ -30,6 +33,10 @@ export interface SimulationModuleOptions {
  * dimensionality.
  */
 export class SimulationModule extends Module implements Updatable {
+  private readonly _preparation: Once = new Once(
+    'Simulation module preparation has already failed or is in progress.',
+  )
+
   private readonly _backends: IdentifiableSet<SimulationBackend> =
     new IdentifiableSet<SimulationBackend>()
 
@@ -40,8 +47,12 @@ export class SimulationModule extends Module implements Updatable {
    * @param options - Initial backends and spaces.
    * @throws {@link Error} If identifiers are duplicated.
    */
-  public constructor({ backends = [], spaces = [] }: SimulationModuleOptions = {}) {
-    super({ identifier: 'org.js.euphoria.SimulationModule' })
+  public constructor({
+    backends = [],
+    spaces = [],
+    dependencies = [],
+  }: SimulationModuleOptions = {}) {
+    super({ identifier: 'org.js.euphoria.SimulationModule', dependencies })
     for (const backend of backends) this._backends.add(backend)
     for (const space of spaces) this._spaces.add(space)
   }
@@ -159,6 +170,23 @@ export class SimulationModule extends Module implements Updatable {
   /** @inheritDoc */
   public update(context: UpdateContext): void {
     this.step(context.deltaTime)
+  }
+
+  /** Yields additional spaces whose ownership transfers to the module, once. */
+  protected *compose(): Generator<SimulationSpace, void, unknown> {
+    // Override to yield spaces.
+  }
+
+  /** Configures the module once after composition. */
+  protected configure(): void {
+    // Override to configure the module.
+  }
+
+  protected override onStart(): void {
+    this._preparation.execute(() => {
+      for (const space of this.compose()) this._spaces.add(space)
+      this.configure()
+    })
   }
 
   protected override onDestroy(): void {

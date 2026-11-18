@@ -1,6 +1,6 @@
 import { IdentifiableSet } from '#/core/collections/identifiable-set.js'
 import { Store } from '#/core/events/store.js'
-import { Module, ModuleState } from '#/core/module.js'
+import { Module, type ModuleDependency, ModuleState } from '#/core/module.js'
 import { Once } from '#/core/primitives/once.js'
 import { Color } from '#/graphics/primitives/color.js'
 
@@ -26,6 +26,8 @@ export interface RendererModuleOptions {
   readonly passes?: Iterable<RenderPass>
   /** Color used to clear the drawing surface. Defaults to black. */
   readonly clearColor?: Color
+  /** Required and optional module dependencies. */
+  readonly dependencies?: Iterable<ModuleDependency>
 }
 
 /**
@@ -61,8 +63,9 @@ export class RendererModule extends Module implements Updatable {
     spaces = [],
     passes = [],
     clearColor = Color.black,
+    dependencies = [],
   }: RendererModuleOptions) {
-    super({ identifier: 'org.js.euphoria.RendererModule' })
+    super({ identifier: 'org.js.euphoria.RendererModule', dependencies })
     this.backend = backend
     this.clearColor = new Store(clearColor)
     this._passes.add(new ClearRenderPass())
