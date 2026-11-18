@@ -1,4 +1,10 @@
-import { AssetsModule, AudioClipImporter, FontImporter, ImageImporter } from '@euphoria/engine'
+import {
+  AssetsModule,
+  AudioClipImporter,
+  FontImporter,
+  GltfImporter,
+  ImageImporter,
+} from '@euphoria/engine'
 
 /**
  * Assets module of the playground.
@@ -16,6 +22,7 @@ export class PlaygroundAssetsModule extends AssetsModule {
         new AudioClipImporter(),
         // Fonts rasterize at the size the stories draw at, so glyphs stay crisp.
         new FontImporter({ size: 32 }),
+        new GltfImporter(),
       ],
     })
   }

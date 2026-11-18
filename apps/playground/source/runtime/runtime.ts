@@ -1,4 +1,6 @@
 import {
+  type AssetManifest,
+  type AssetProgress,
   type AssetsModule,
   type Color,
   Dimension,
@@ -47,6 +49,8 @@ export interface RuntimeOptions {
   readonly height?: number
   /** Background the canvas is cleared with; defaults to black. */
   readonly background?: Color | undefined
+  /** Assets loaded before the scene is built, with a progress bar while they load. */
+  readonly preload?: AssetManifest | undefined
 }
 
 const defaultWidth = 640
@@ -117,6 +121,8 @@ export class PlaygroundRuntime {
 
     const backend = new WebGlBackend({ canvas })
     const assets = new PlaygroundAssetsModule()
+    if (options.preload !== undefined)
+      await preloadAssets(options.container, assets, options.preload)
     const materials = await createSceneMaterials(backend, assets)
     const physics = await createPhysics(options.physics ?? [])
     const panel = new StatsPanel(options.container)
@@ -240,4 +246,55 @@ async function createPhysics(dimensions: readonly Dimension[]): Promise<Simulati
   }
 
   return backends
+}
+
+/**
+ * Loads a manifest and shows how far it goes.
+ *
+ * The bar is part of the runtime, not of a story: a game that declares what it
+ * needs before starting gets a loading screen for free, and the screen reports
+ * the asset in flight and the ones that failed instead of a bare spinner.
+ *
+ * @param container - Element that receives the bar.
+ * @param assets - Module that loads the assets.
+ * @param manifest - Assets to load.
+ */
+async function preloadAssets(
+  container: HTMLElement,
+  assets: AssetsModule,
+  manifest: AssetManifest,
+): Promise<void> {
+  const report = assets.loadAll(manifest)
+  const overlay = document.createElement('div')
+  overlay.style.cssText = 'color:#c9d1e4;font:13px/1.4 monospace;padding:0.5rem 0'
+  const label = document.createElement('div')
+  const bar = document.createElement('div')
+  const fill = document.createElement('div')
+  bar.style.cssText =
+    'height:4px;background:#1b2030;border-radius:2px;overflow:hidden;margin-top:4px'
+  fill.style.cssText = 'height:100%;width:0;background:#5ad1ff;transition:width 80ms linear'
+  bar.append(fill)
+  overlay.append(label, bar)
+  container.append(overlay)
+  const paint = (progress: AssetProgress): void => {
+    label.textContent = describeProgress(progress)
+    fill.style.width = `${(progress.ratio * 100).toFixed(0)}%`
+  }
+
+  paint(report.progress.value)
+  const connection = report.progress.connect(({ value }) => {
+    paint(value)
+  })
+  await report.finished
+  connection.disconnect()
+  overlay.remove()
+}
+
+function describeProgress(progress: AssetProgress): string {
+  const head = `${progress.name}: ${String(progress.loaded)}/${String(progress.total)}`
+  if (progress.failed > 0) return `${head} · ${String(progress.failed)} failed`
+  if (progress.done) return `${head} · ready`
+  if (progress.current === undefined) return head
+
+  return `${head} · ${progress.current}`
 }

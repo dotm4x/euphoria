@@ -23,6 +23,12 @@ project can grow without switching tools or rewriting its foundation.
   nodes lay them out with alignment, wrapping and scaling in two or three
   dimensions. Runs mix fonts, sizes and colors on the same line, so a bold word
   or a colored number costs no extra material.
+- **Models from files** — glTF and GLB files become geometry and a node
+  hierarchy, so a level can come from a modelling tool instead of a list of
+  primitive calls.
+- **Input that fits the game** — Keyboard, mouse, touches and gamepads feed named
+  actions and axes, so the same movement code reads a stick, a key pair or a
+  finger.
 - **Built for real games** — Input, timing, scenes, rendering, audio and asset
   management ship together, with the same code in development and in production.
 - **Sound that follows the scene** — Music, interface sounds and placed emitters
@@ -49,6 +55,12 @@ project can grow without switching tools or rewriting its foundation.
 > Text draws from font atlases built through the Canvas API, with wrapping,
 > alignment and scaling. Rich text styles and signed distance fields are still
 > being built.
+>
+> Models load from glTF and GLB, with their hierarchy and material colors.
+> Skinning, animations, morph targets and embedded images are not read yet.
+>
+> Input covers keyboard, mouse, touch and gamepad through named actions and
+> axes. Virtual joysticks and haptic feedback are still being built.
 >
 > More information will be added as the engine progresses.
 
