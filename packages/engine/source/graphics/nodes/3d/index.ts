@@ -1,4 +1,5 @@
 export * from './camera.js'
+export * from './controllers/index.js'
 export * from './environment.js'
 export * from './light.js'
 export * from './lights.js'
