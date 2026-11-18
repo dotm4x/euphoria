@@ -3,6 +3,8 @@ import { type Identifiable } from '#/core/interfaces/identifiable.js'
 import { Destroyable } from '#/core/primitives/destroyable.js'
 import { type Dimension } from '#/physics/primitives/dimension.js'
 
+import { type SimulationBackend } from '../backends/backend.js'
+
 /** Step priority of a space. Lower priorities are stepped first. */
 export enum SimulationPriority {
   low,
@@ -101,6 +103,18 @@ export abstract class SimulationSpace extends Destroyable implements Identifiabl
    * @param deltaTime - Elapsed time of the update, in seconds.
    * @returns The length of each step to execute, in seconds.
    */
+
+  /**
+   * Advances the space with the backend bound to it.
+   *
+   * Subclasses narrow the backend to their dimensionality, which the module
+   * guarantees when it binds them.
+   *
+   * @param backend - Backend that advances this space.
+   * @param deltaTime - Elapsed time of the update, in seconds.
+   */
+  public abstract step(backend: SimulationBackend, deltaTime: number): void
+
   protected consumeSteps(deltaTime: number): readonly number[] {
     this.throwIfDestroyed()
     if (deltaTime <= 0) return []

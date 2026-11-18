@@ -11,6 +11,8 @@ import {
   SimulationPriority,
   type SimulationResult2D,
   SimulationSpace2D,
+  SimulationSpace3D,
+  type SimulationSpaceBinding,
   type SimulationStats,
 } from '../../../source/index.js'
 
@@ -19,8 +21,11 @@ class TestGame extends Game {}
 class ComposingModule extends SimulationModule {
   public configured: boolean = false
 
-  protected override *compose(): Generator<SimulationSpace2D, void, unknown> {
-    yield new SimulationSpace2D({ identifier: 'composed' })
+  protected override *compose(): Generator<SimulationSpaceBinding, void, unknown> {
+    yield {
+      space: new SimulationSpace2D({ identifier: 'composed' }),
+      backend: new RecordingBackend('composed-backend'),
+    }
   }
 
   protected override configure(): void {
@@ -73,18 +78,23 @@ describe('SimulationModule', () => {
     const order: string[] = []
     const backend = new RecordingBackend()
     const module = new SimulationModule({
-      backends: [backend],
       spaces: [
-        new SimulationSpace2D({
-          identifier: 'last',
-          priority: SimulationPriority.critical,
-          entries: [createEntry('last', order)],
-        }),
-        new SimulationSpace2D({
-          identifier: 'first',
-          priority: SimulationPriority.low,
-          entries: [createEntry('first', order)],
-        }),
+        {
+          space: new SimulationSpace2D({
+            identifier: 'last',
+            priority: SimulationPriority.critical,
+            entries: [createEntry('last', order)],
+          }),
+          backend,
+        },
+        {
+          space: new SimulationSpace2D({
+            identifier: 'first',
+            priority: SimulationPriority.low,
+            entries: [createEntry('first', order)],
+          }),
+          backend,
+        },
       ],
     })
 
@@ -95,26 +105,37 @@ describe('SimulationModule', () => {
     module.destroy()
   })
 
-  it('routes spaces to the backend that matches their dimension', () => {
-    const backend = new RecordingBackend()
+  it('binds every space to its own backend', () => {
+    const planar = new RecordingBackend('planar')
+    const other = new RecordingBackend('other')
     const space = new SimulationSpace2D({ identifier: 'space' })
-    const module = new SimulationModule({ backends: [backend], spaces: [space] })
+    const second = new SimulationSpace2D({ identifier: 'second' })
+    const module = new SimulationModule({
+      spaces: [
+        { space, backend: planar },
+        { space: second, backend: other },
+      ],
+    })
 
-    expect(module.backendFor(space.dimension)).toBe(backend)
-    expect(module.backendFor(Dimension.threeDimensional)).toBeUndefined()
+    module.step(1 / 60)
+
+    expect(module.backendOf('space')).toBe(planar)
+    expect(module.backendOf('second')).toBe(other)
+    // Two spaces of the same dimension no longer share a world.
+    expect(planar.events).toHaveLength(3)
+    expect(other.events).toHaveLength(3)
     module.destroy()
   })
 
-  it('rejects stepping a space without a matching backend', () => {
-    const module = new SimulationModule({
-      spaces: [new SimulationSpace2D({ identifier: 'space' })],
-    })
+  it('rejects a space bound to a backend of another dimensionality', () => {
+    const backend = new RecordingBackend()
 
-    expect(() => {
-      module.step(1 / 60)
-    }).toThrow(/dimension/)
-
-    module.destroy()
+    expect(
+      () =>
+        new SimulationModule({
+          spaces: [{ space: new SimulationSpace3D({ identifier: 'spatial' }), backend }],
+        }),
+    ).toThrow(/dimensionality/)
   })
 
   it('registers and returns spaces and backends to their owner', () => {
@@ -124,12 +145,13 @@ describe('SimulationModule', () => {
     const game = new TestGame([module])
     game.start()
 
-    module.addBackend(backend)
-    module.addSpace(space)
+    module.addSpace({ space, backend })
 
     expect(module.backends.get('backend')).toBe(backend)
     expect(module.spaces.get('space')).toBe(space)
+    expect(module.backendOf('space')).toBe(backend)
     expect(module.removeSpace('space')).toBe(space)
+    expect(module.backendOf('space')).toBeUndefined()
     expect(module.removeBackend('backend')).toBe(backend)
     space.destroy()
     backend.destroy()
@@ -140,8 +162,7 @@ describe('SimulationModule', () => {
   it('steps the registered spaces on update', () => {
     const backend = new RecordingBackend()
     const module = new SimulationModule({
-      backends: [backend],
-      spaces: [new SimulationSpace2D({ identifier: 'space' })],
+      spaces: [{ space: new SimulationSpace2D({ identifier: 'space' }), backend }],
     })
 
     module.update({ deltaTime: 1 / 60, updateRate: 60 })
@@ -153,7 +174,7 @@ describe('SimulationModule', () => {
   it('owns the spaces and backends it destroys', () => {
     const backend = new RecordingBackend()
     const space = new SimulationSpace2D({ identifier: 'space' })
-    const module = new SimulationModule({ backends: [backend], spaces: [space] })
+    const module = new SimulationModule({ spaces: [{ space, backend }] })
     const game = new TestGame([module])
     game.start()
     game.stop()
@@ -165,8 +186,7 @@ describe('SimulationModule', () => {
   })
 
   it('registers the spaces it composes when it starts', () => {
-    const backend = new RecordingBackend()
-    const module = new ComposingModule({ backends: [backend] })
+    const module = new ComposingModule()
     const game = new TestGame([module])
 
     game.start()
@@ -174,8 +194,11 @@ describe('SimulationModule', () => {
     const composed = module.spaces.get('composed')
     expect(composed).toBeInstanceOf(SimulationSpace2D)
     expect(module.configured).toBe(true)
+    const backend = module.backendOf('composed')
+    expect(backend?.identifier).toBe('composed-backend')
     game.stop()
     game.destroy()
     expect(composed?.destroyed).toBe(true)
+    expect(backend?.destroyed).toBe(true)
   })
 })

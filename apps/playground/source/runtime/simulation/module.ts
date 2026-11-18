@@ -4,7 +4,7 @@ import {
   SceneSimulationSpace3D,
   type SimulationBackend,
   SimulationModule,
-  type SimulationSpace,
+  type SimulationSpaceBinding,
 } from '@euphoria/engine'
 
 import { type StoryScene } from '../scene.js'
@@ -25,13 +25,15 @@ export interface PlaygroundSimulationOptions {
  * that need one, wires them to the scene and lets the base class own them.
  */
 export class PlaygroundSimulationModule extends SimulationModule {
+  private readonly _physics: readonly SimulationBackend[]
   private readonly _scene: StoryScene
 
   /**
-   * @param options - Story scene and simulation backends.
+   * @param options - Story scene and the backends its spaces run in.
    */
   public constructor({ scene, physics }: PlaygroundSimulationOptions) {
-    super({ backends: physics, dependencies: [{ type: PlaygroundScenesModule }] })
+    super({ dependencies: [{ type: PlaygroundScenesModule }] })
+    this._physics = physics
     this._scene = scene
   }
 
@@ -40,11 +42,13 @@ export class PlaygroundSimulationModule extends SimulationModule {
     for (const space of this.spaces.values()) this._scene.attach(space)
   }
 
-  protected override *compose(): Generator<SimulationSpace, void, unknown> {
-    for (const backend of this.backends.values()) {
-      yield backend.dimension === Dimension.twoDimensional
-        ? this.planarSpace()
-        : this.spatialSpace()
+  protected override *compose(): Generator<SimulationSpaceBinding, void, unknown> {
+    for (const backend of this._physics) {
+      yield {
+        space:
+          backend.dimension === Dimension.twoDimensional ? this.planarSpace() : this.spatialSpace(),
+        backend,
+      }
     }
   }
 

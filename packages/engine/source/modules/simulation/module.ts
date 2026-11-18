@@ -1,36 +1,34 @@
 import { IdentifiableSet } from '#/core/collections/identifiable-set.js'
 import { Module, type ModuleDependency, ModuleState } from '#/core/module.js'
 import { Once } from '#/core/primitives/once.js'
-import { type Dimension } from '#/physics/primitives/dimension.js'
 
 import { type UpdateContext } from '../time/context.js'
 import { type Updatable } from '../time/interfaces/updatable.js'
 
-import {
-  type SimulationBackend,
-  SimulationBackend2D,
-  SimulationBackend3D,
-} from './backends/backend.js'
-import { SimulationSpace2D } from './spaces/2d/space.js'
-import { SimulationSpace3D } from './spaces/3d/space.js'
+import { type SimulationBackend } from './backends/backend.js'
 import { type SimulationSpace } from './spaces/space.js'
+
+/** A space together with the backend that advances it. */
+export interface SimulationSpaceBinding {
+  /** Space whose ownership transfers to the module. */
+  readonly space: SimulationSpace
+  /** Backend that advances that space; its ownership transfers to the module. */
+  readonly backend: SimulationBackend
+}
 
 /** Configuration for the simulation module. */
 export interface SimulationModuleOptions {
-  /** Backends whose ownership transfers to the module. */
-  readonly backends?: Iterable<SimulationBackend>
-  /** Spaces whose ownership transfers to the module. */
-  readonly spaces?: Iterable<SimulationSpace>
+  /** Spaces bound to the backend that advances each one. */
+  readonly spaces?: Iterable<SimulationSpaceBinding>
   /** Required and optional module dependencies. */
   readonly dependencies?: Iterable<ModuleDependency>
 }
 
 /**
- * Steps registered spaces through their simulation backends.
+ * Steps registered spaces through the backend each one runs in.
  *
- * The module owns its backends and spaces. Each update steps the spaces in
- * priority order, routing every space to the backend that matches its
- * dimensionality.
+ * Every space owns its own world, so two spaces of the same dimensionality
+ * never see each other's bodies. Each update steps the spaces in priority order.
  */
 export class SimulationModule extends Module implements Updatable {
   private readonly _preparation: Once = new Once(
@@ -43,18 +41,15 @@ export class SimulationModule extends Module implements Updatable {
   private readonly _spaces: IdentifiableSet<SimulationSpace> =
     new IdentifiableSet<SimulationSpace>()
 
+  private readonly _runtime: Map<string, SimulationBackend> = new Map<string, SimulationBackend>()
+
   /**
-   * @param options - Initial backends and spaces.
+   * @param options - Initial spaces bound to their backends.
    * @throws {@link Error} If identifiers are duplicated.
    */
-  public constructor({
-    backends = [],
-    spaces = [],
-    dependencies = [],
-  }: SimulationModuleOptions = {}) {
+  public constructor({ spaces = [], dependencies = [] }: SimulationModuleOptions = {}) {
     super({ identifier: 'org.js.euphoria.SimulationModule', dependencies })
-    for (const backend of backends) this._backends.add(backend)
-    for (const space of spaces) this._spaces.add(space)
+    for (const binding of spaces) this.bind(binding)
   }
 
   /** Backends indexed by identifier. The module retains ownership. */
@@ -72,39 +67,24 @@ export class SimulationModule extends Module implements Updatable {
   }
 
   /**
-   * Registers a backend, transferring its ownership to the module.
+   * Registers a space bound to its backend, transferring both.
    *
-   * @param backend - Backend to register.
-   * @throws {@link Error} If the backend is destroyed or its identifier is duplicated.
+   * @param binding - Space and the backend that advances it.
+   * @throws {@link Error} If the space or the backend is destroyed, their identifiers are duplicated, or their dimensions differ.
    */
-  public addBackend(backend: SimulationBackend): void {
+  public addSpace({ space, backend }: SimulationSpaceBinding): void {
     this.throwIfDestroyed()
-    this._backends.add(backend)
+    this.bind({ space, backend })
   }
 
   /**
-   * Registers a space, transferring its ownership to the module.
+   * Finds the backend that advances a space.
    *
-   * @param space - Space to register.
-   * @throws {@link Error} If the space is destroyed or its identifier is duplicated.
+   * @param identifier - Identifier of the space.
+   * @returns The backend bound to it, or undefined when the space is not registered.
    */
-  public addSpace(space: SimulationSpace): void {
-    this.throwIfDestroyed()
-    this._spaces.add(space)
-  }
-
-  /**
-   * Finds the backend that advances a dimension.
-   *
-   * @param dimension - Dimensionality to advance.
-   * @returns The matching backend, or undefined when none is registered.
-   */
-  public backendFor(dimension: Dimension): SimulationBackend | undefined {
-    for (const backend of this._backends) {
-      if (backend.dimension === dimension) return backend
-    }
-
-    return undefined
+  public backendOf(identifier: string): SimulationBackend | undefined {
+    return this._runtime.get(identifier)
   }
 
   /**
@@ -132,6 +112,7 @@ export class SimulationModule extends Module implements Updatable {
     const space = this._spaces.get(identifier)
     if (space === undefined) return undefined
     this._spaces.delete(space)
+    this._runtime.delete(identifier)
     return space
   }
 
@@ -139,31 +120,19 @@ export class SimulationModule extends Module implements Updatable {
    * Steps every enabled space in priority order.
    *
    * @param deltaTime - Elapsed time of the update, in seconds.
-   * @throws {@link Error} If a space has no matching backend.
+   * @throws {@link Error} If a space lost its backend.
    */
   public step(deltaTime: number): void {
     this.throwIfDestroyed()
     const spaces = [...this._spaces].sort((left, right) => left.priority - right.priority)
     for (const space of spaces) {
       if (!space.enabled.value) continue
-      const backend = this.backendFor(space.dimension)
+      const backend = this._runtime.get(space.identifier)
       if (backend === undefined) {
-        throw new Error(`No simulation backend is registered for dimension '${space.dimension}'.`)
+        throw new Error(`Simulation space '${space.identifier}' has no backend bound to it.`)
       }
 
-      if (space instanceof SimulationSpace2D && backend instanceof SimulationBackend2D) {
-        space.step(backend, deltaTime)
-        continue
-      }
-
-      if (space instanceof SimulationSpace3D && backend instanceof SimulationBackend3D) {
-        space.step(backend, deltaTime)
-        continue
-      }
-
-      throw new Error(
-        `Simulation space '${space.identifier}' cannot be stepped by backend '${backend.identifier}'.`,
-      )
+      space.step(backend, deltaTime)
     }
   }
 
@@ -172,8 +141,8 @@ export class SimulationModule extends Module implements Updatable {
     this.step(context.deltaTime)
   }
 
-  /** Yields additional spaces whose ownership transfers to the module, once. */
-  protected *compose(): Generator<SimulationSpace, void, unknown> {
+  /** Yields additional spaces bound to their backends, once. */
+  protected *compose(): Generator<SimulationSpaceBinding, void, unknown> {
     // Override to yield spaces.
   }
 
@@ -184,7 +153,7 @@ export class SimulationModule extends Module implements Updatable {
 
   protected override onStart(): void {
     this._preparation.execute(() => {
-      for (const space of this.compose()) this._spaces.add(space)
+      for (const binding of this.compose()) this.bind(binding)
       this.configure()
     })
   }
@@ -199,11 +168,24 @@ export class SimulationModule extends Module implements Updatable {
     }
 
     this._spaces.clear()
+    this._runtime.clear()
     for (const backend of [...this._backends]) {
       if (!backend.destroyed) backend.destroy()
     }
 
     this._backends.clear()
     super.onDestroy()
+  }
+
+  private bind({ space, backend }: SimulationSpaceBinding): void {
+    if (space.dimension !== backend.dimension) {
+      throw new Error(
+        `Simulation space '${space.identifier}' cannot run in a backend of another dimensionality.`,
+      )
+    }
+
+    this._spaces.add(space)
+    if (!this._backends.get(backend.identifier)) this._backends.add(backend)
+    this._runtime.set(space.identifier, backend)
   }
 }
