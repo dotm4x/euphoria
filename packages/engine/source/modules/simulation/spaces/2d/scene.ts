@@ -34,6 +34,7 @@ export class SceneSimulationSpace2D extends SimulationSpace2D {
   /** @inheritDoc */
   public override collect(context: SimulationContext): SimulationFrame2D {
     this.throwIfDestroyed()
+    this.applyComposition()
     const collected: CollectedBody2D[] = []
     collectNodeBodies2D(this._scenes.activeScene.value, context, collected)
 

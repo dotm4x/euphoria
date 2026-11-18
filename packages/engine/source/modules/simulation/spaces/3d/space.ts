@@ -2,9 +2,10 @@ import { ReactiveSet } from '#/core/collections/reactive-set.js'
 import { type ReadOnlySignal, Signal } from '#/core/events/signal.js'
 import { type ReadOnlyStore, Store } from '#/core/events/store.js'
 import { Node } from '#/core/node/node.js'
+import { Once } from '#/core/primitives/once.js'
 import { Vector3 } from '#/math/primitives/vectors/vector3.js'
 import { type BodyDescriptor3D } from '#/physics/descriptors/3d/body.js'
-import { type JointDescriptor3D } from '#/physics/descriptors/3d/joint.js'
+import { JointDescriptor3D } from '#/physics/descriptors/3d/joint.js'
 import { type BodyState3D } from '#/physics/descriptors/3d/state.js'
 import { type BodyContact3D } from '#/physics/descriptors/contact.js'
 import { type SimulationContext } from '#/physics/interfaces/context.js'
@@ -45,6 +46,10 @@ export class SimulationSpace3D extends SimulationSpace {
   private readonly _contacts: Store<readonly SimulableContact3D[]> = new Store<
     readonly SimulableContact3D[]
   >([])
+
+  private readonly _composition: Once = new Once(
+    'Simulation space composition has already failed or is in progress.',
+  )
 
   /** @inheritDoc */
   public override readonly dimension: Dimension = Dimension.threeDimensional
@@ -88,6 +93,8 @@ export class SimulationSpace3D extends SimulationSpace {
    */
   public collect(context: SimulationContext): SimulationFrame3D {
     this.throwIfDestroyed()
+    this.applyComposition()
+
     const collected: CollectedBody3D[] = []
     for (const entry of this.entries) {
       if (entry instanceof Node) {
@@ -154,6 +161,32 @@ export class SimulationSpace3D extends SimulationSpace {
     }
 
     return this._backend.castRay(origin, direction, maximumDistance, options)
+  }
+
+  /**
+   * Registers the entries and joints yielded by `compose`, once.
+   *
+   * Spaces that take their bodies from a scene call this from their own
+   * `collect`, so composed joints take part there too. Composed entries stay out
+   * of those spaces, which take their bodies from the scene and not from a list.
+   */
+  protected applyComposition(): void {
+    this._composition.execute(() => {
+      for (const component of this.compose()) {
+        if (component instanceof JointDescriptor3D) this.joints.add(component)
+        else this.entries.add(component)
+      }
+    })
+  }
+
+  /**
+   * Yields additional entries and joints, whose ownership the space never takes.
+   *
+   * The options and this hook compose the same components: a joint registers as
+   * a joint and an entry as an entry, whichever way it arrives.
+   */
+  protected *compose(): Generator<JointDescriptor3D | Simulable3D, void, unknown> {
+    // Override to yield entries and joints.
   }
 
   protected override onDestroy(): void {

@@ -30,6 +30,26 @@ describe('PhysicsBody2D', () => {
     body.destroy()
   })
 
+  it('attaches the colliders it composes, like the options do', () => {
+    const composed = new ColliderDescriptor2D({ shape: createCircleShape2D(2) })
+    class ComposingBody extends PhysicsBody2D {
+      protected override *composeColliders(): Generator<ColliderDescriptor2D, void, unknown> {
+        yield composed
+      }
+    }
+
+    const body = new ComposingBody()
+    body.load()
+    body.simulate(context)
+    body.simulate(context)
+
+    const [descriptor] = body.simulate(context).bodies
+
+    expect(body.colliders.size).toBe(1)
+    expect(descriptor?.colliders).toEqual([composed])
+    body.destroy()
+  })
+
   it('reuses the descriptor while nothing changes', () => {
     const body = new PhysicsBody2D()
     body.load()

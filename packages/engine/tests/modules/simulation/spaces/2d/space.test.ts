@@ -8,6 +8,7 @@ import {
   Dimension,
   MotionType,
   PhysicsBody2D,
+  RevoluteJoint2D,
   type Simulable2D,
   type SimulableContact2D,
   SimulationBackend2D,
@@ -236,6 +237,27 @@ describe('SimulationSpace2D', () => {
     expect(seen[0]?.otherCollider).toBe('b')
     expect(first.contacts).toEqual([seen[0]])
     expect(second.contacts).toEqual([seen[1]])
+    space.destroy()
+  })
+
+  it('composes entries and joints, exactly like the options do', () => {
+    const backend = new RecordingBackend()
+    const plain = new PlainBody('composed')
+    const joint = new RevoluteJoint2D({ body: 'a', other: 'b' })
+    class ComposingSpace extends SimulationSpace2D {
+      protected override *compose(): Generator<RevoluteJoint2D | Simulable2D, void, unknown> {
+        yield plain
+        yield joint
+      }
+    }
+
+    const space = new ComposingSpace({ identifier: 'space' })
+    space.step(backend, 1 / 60)
+
+    expect(space.entries.has(plain)).toBe(true)
+    expect(space.joints.has(joint)).toBe(true)
+    expect(backend.frame?.bodies.map((descriptor) => descriptor.identifier)).toEqual(['composed'])
+    expect(backend.frame?.joints).toEqual([joint])
     space.destroy()
   })
 

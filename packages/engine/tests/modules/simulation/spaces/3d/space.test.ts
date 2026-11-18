@@ -81,6 +81,37 @@ class PlainBody implements Simulable3D {
 }
 
 describe('SimulationSpace3D', () => {
+  it('composes entries and joints, exactly like the options do', () => {
+    const backend = new RecordingBackend()
+    const body = new PhysicsBody3D({ position: new Vector3(0, 4, 0) })
+    const ground = new PhysicsBody3D({ motion: MotionType.static })
+    const joint = new FixedJoint3D({ body: body.identifier, other: ground.identifier })
+    class ComposingSpace extends SimulationSpace3D {
+      protected override *compose(): Generator<FixedJoint3D | Simulable3D, void, unknown> {
+        yield ground
+        yield body
+        yield joint
+      }
+    }
+
+    const space = new ComposingSpace({ identifier: 'space' })
+    body.load()
+    ground.load()
+
+    space.step(backend, 1 / 60)
+
+    expect(space.entries.has(body)).toBe(true)
+    expect(space.joints.has(joint)).toBe(true)
+    expect(backend.frame?.bodies.map((descriptor) => descriptor.identifier)).toEqual([
+      ground.identifier,
+      body.identifier,
+    ])
+    expect(backend.frame?.joints).toEqual([joint])
+    body.destroy()
+    ground.destroy()
+    space.destroy()
+  })
+
   it('splits elapsed time into fixed steps and collects joints', () => {
     const backend = new RecordingBackend()
     const body = new PhysicsBody3D({ position: new Vector3(0, 4, 0) })

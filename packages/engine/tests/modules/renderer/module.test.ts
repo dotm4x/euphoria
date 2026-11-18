@@ -244,6 +244,27 @@ describe('RendererModule', () => {
     game.destroy()
   })
 
+  it('composes passes, exactly like the options do', () => {
+    const backend = new TestBackend()
+    const pass = new TestPass('composed-pass', RenderPassPriority.normal)
+    class TestRendererModule extends RendererModule {
+      protected override *compose(): Generator<RenderPass | RenderSpace, void, unknown> {
+        yield new RenderSpace({ identifier: 'composed-space', camera: new Camera2D() })
+        yield pass
+      }
+    }
+
+    const renderer = new TestRendererModule({ backend })
+    const game = new TestGame([renderer])
+    game.start()
+
+    expect(renderer.spaces.has('composed-space')).toBe(true)
+    expect(renderer.passes.has('composed-pass')).toBe(true)
+    expect(renderer.passes.get('composed-pass')).toBe(pass)
+    game.stop()
+    game.destroy()
+  })
+
   it('draws composed meshes through the drawable contract', () => {
     const backend = new TestBackend()
     const mesh = createMesh()

@@ -10,7 +10,7 @@ import { type Updatable } from '../time/interfaces/updatable.js'
 import { type RenderBackend } from './backends/backend.js'
 import {
   ClearRenderPass,
-  type RenderPass,
+  RenderPass,
   type RenderPassContext,
   SpaceRenderPass,
 } from './passes/index.js'
@@ -185,9 +185,14 @@ export class RendererModule extends Module implements Updatable {
     }
   }
 
-  /** Yields additional spaces whose ownership transfers to the module, once. */
-  protected *compose(): Generator<RenderSpace, void, unknown> {
-    // Override to yield spaces.
+  /**
+   * Yields additional spaces and passes whose ownership transfers to the module, once.
+   *
+   * The options and this hook compose the same components: a pass registers as
+   * a pass and a space as a space, whichever way it arrives.
+   */
+  protected *compose(): Generator<RenderPass | RenderSpace, void, unknown> {
+    // Override to yield spaces and passes.
   }
 
   /** Configures the module once after composition. */
@@ -197,7 +202,11 @@ export class RendererModule extends Module implements Updatable {
 
   protected override onStart(): void {
     this._preparation.execute(() => {
-      for (const space of this.compose()) this._spaces.add(space)
+      for (const component of this.compose()) {
+        if (component instanceof RenderPass) this._passes.add(component)
+        else this._spaces.add(component)
+      }
+
       this.configure()
     })
   }

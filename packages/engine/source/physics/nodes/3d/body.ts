@@ -3,6 +3,7 @@ import { type ReadOnlySignal, Signal } from '#/core/events/signal.js'
 import { type ReadOnlyStore } from '#/core/events/store.js'
 import { Store } from '#/core/events/store.js'
 import { type Node } from '#/core/node/node.js'
+import { Once } from '#/core/primitives/once.js'
 import { Node3D, type Node3DOptions } from '#/math/nodes/node3d.js'
 import { Vector3 } from '#/math/primitives/vectors/vector3.js'
 
@@ -64,6 +65,10 @@ export class PhysicsBody3D extends Node3D implements Simulable3D {
   >([])
 
   private _teleportPending: boolean = false
+
+  private readonly _colliderComposition: Once = new Once(
+    'Body collider composition has already failed or is in progress.',
+  )
 
   /** How the body takes part in the simulation. */
   public readonly motion: Store<MotionType>
@@ -143,6 +148,10 @@ export class PhysicsBody3D extends Node3D implements Simulable3D {
   /** @inheritDoc */
   public simulate(_context: SimulationContext): SimulationData3D {
     this.throwIfDestroyed()
+    this._colliderComposition.execute(() => {
+      for (const collider of this.composeColliders()) this.colliders.add(collider)
+    })
+
     const candidate = new BodyDescriptor3D({
       identifier: this.identifier,
       motion: this.motion.value,
@@ -263,6 +272,16 @@ export class PhysicsBody3D extends Node3D implements Simulable3D {
     if (position !== undefined) this.position.value = position
     if (rotation !== undefined) this.rotation.value = rotation
     this._teleportPending = true
+  }
+
+  /**
+   * Yields additional colliders, attached when the body first simulates.
+   *
+   * The options and this hook compose the same colliders. The hook is not
+   * `compose()` because Node owns that name for its children.
+   */
+  protected *composeColliders(): Generator<ColliderDescriptor3D, void, unknown> {
+    // Override to yield colliders.
   }
 
   protected override onDestroy(): void {
