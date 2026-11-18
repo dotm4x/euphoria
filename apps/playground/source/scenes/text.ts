@@ -187,6 +187,7 @@ export class TextScene extends Node2D implements Updatable {
       name: 'runs',
       font,
       material,
+      materials: [[boldFont, boldMaterial]],
       text: [
         { text: 'runs mix ' },
         { text: 'regular' },

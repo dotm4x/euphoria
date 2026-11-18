@@ -147,7 +147,7 @@ export abstract class CanvasItem2D extends Node2D implements Drawable {
    *
    * @param mesh - Geometry to draw.
    * @param local - Transformation applied before the flip and node transforms.
-   * @param overrides - Tint, order, depth, clip or blend for this command.
+   * @param overrides - Material, tint, order, depth, clip or blend for this command.
    * @returns A draw command ready to be collected.
    * @throws {@link Error} If no material is available.
    */
@@ -155,12 +155,12 @@ export abstract class CanvasItem2D extends Node2D implements Drawable {
     mesh: GraphicMesh2D,
     local: Matrix3x2 = this.shapeTransform,
     overrides: Partial<
-      Pick<Draw2DCommandOptions, 'tint' | 'order' | 'depth' | 'clip' | 'blend'>
+      Pick<Draw2DCommandOptions, 'tint' | 'order' | 'depth' | 'clip' | 'blend' | 'material'>
     > = {},
   ): Draw2DCommand {
     return new Draw2DCommand({
       mesh,
-      material: this.resolveMaterial(),
+      material: overrides.material ?? this.resolveMaterial(),
       transform: local.multiply(this.flipTransform).multiply(this.globalTransform),
       order: overrides.order ?? this.order.value,
       depth: overrides.depth ?? this.depth.value,

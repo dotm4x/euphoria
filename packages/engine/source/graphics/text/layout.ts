@@ -60,6 +60,8 @@ export interface TextGlyphQuad {
   readonly v1: number
   /** Color of the glyph, before the tint of the node. */
   readonly color: Color
+  /** Font whose atlas the glyph samples. */
+  readonly font: Font
 }
 
 /** Text placed in world units, ready to become geometry. */
@@ -331,6 +333,7 @@ function placeLine(
         u1: glyph.u1,
         v1: glyph.v1,
         color: styled.color,
+        font: styled.font,
       })
     }
 

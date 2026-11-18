@@ -1,8 +1,10 @@
 import { Store } from '#/core/events/store.js'
 import { Matrix3x2 } from '#/math/primitives/matrices/matrix3x2.js'
 
+import { type Draw2DCommand } from '../../commands/draw2d.js'
 import { type GraphicMesh2D } from '../../geometry/mesh2d.js'
 import { type Font } from '../../resources/font.js'
+import { type GraphicMaterial } from '../../resources/material.js'
 import {
   layoutText,
   TextAlignment,
@@ -10,7 +12,7 @@ import {
   type TextLayout,
   type TextLayoutOptions,
 } from '../../text/layout.js'
-import { createTextMesh2D } from '../../text/mesh.js'
+import { createTextMesh2D, groupQuadsByFont } from '../../text/mesh.js'
 
 import { CanvasItem2D, type CanvasItem2DOptions } from './canvas-item.js'
 
@@ -20,23 +22,25 @@ export interface TextNodeOptions extends CanvasItem2DOptions, TextLayoutOptions 
   readonly font: Font
   /** Text to draw, as a string or as runs with their own font, size and color. */
   readonly text?: TextContent
+  /** Materials of the runs drawn with another font, indexed by that font. */
+  readonly materials?: Iterable<readonly [Font, GraphicMaterial]>
   /** Whether the box is centred on the origin instead of starting at it; defaults to false. */
   readonly centered?: boolean
 }
 
 /**
- * A block of text drawn with a font atlas.
+ * A block of text drawn with one or more font atlases.
  *
  * The origin of the node is the top-left corner of the box and the vertical axis
- * grows downwards. The geometry only changes when the text, the font or the
- * layout does, so a static label costs one mesh and a score rebuilt every frame
- * costs one mesh per change.
+ * grows downwards. Runs that change font produce their own mesh and their own
+ * command, because a material samples a single atlas; runs that only change size
+ * or color stay in one mesh.
  */
 export class TextNode extends CanvasItem2D {
   /** Text to draw, as a string or as runs with their own font, size and color. */
   public readonly text: Store<TextContent>
 
-  /** Font used to draw the text. */
+  /** Font used to draw the runs that do not declare one. */
   public readonly font: Store<Font>
 
   /** Size the glyphs are drawn at, in world units. */
@@ -54,16 +58,17 @@ export class TextNode extends CanvasItem2D {
   /** Whether the box is centred on the origin. */
   public readonly centered: boolean
 
-  private _mesh: GraphicMesh2D | undefined
+  private readonly _materials: Map<Font, GraphicMaterial> = new Map<Font, GraphicMaterial>()
+  private readonly _meshes: Map<Font, GraphicMesh2D> = new Map<Font, GraphicMesh2D>()
   private _inputs: TextInputs | undefined
 
   /**
    * @param options - Transformation, material, text, font and layout settings.
-   * @throws {@link RangeError} If a layout setting is invalid.
    */
   public constructor({
     text = '',
     font,
+    materials = [],
     pixelSize = font.size,
     align = TextAlignment.left,
     wrapWidth = 0,
@@ -79,6 +84,7 @@ export class TextNode extends CanvasItem2D {
     this.wrapWidth = new Store(wrapWidth)
     this.lineSpacing = new Store(lineSpacing)
     this.centered = centered
+    for (const [face, material] of materials) this._materials.set(face, material)
   }
 
   /** Text placed in world units, as the node currently draws it. */
@@ -103,22 +109,9 @@ export class TextNode extends CanvasItem2D {
 
   /** @inheritDoc */
   protected override get shapeMesh(): GraphicMesh2D | undefined {
-    const inputs: TextInputs = [
-      this.text.value,
-      this.font.value,
-      this.pixelSize.value,
-      this.align.value,
-      this.wrapWidth.value,
-      this.lineSpacing.value,
-    ]
-    if (this._mesh === undefined || !sameInputs(this._inputs, inputs)) {
-      if (this._mesh !== undefined && !this._mesh.destroyed) this._mesh.destroy()
-      const layout = this.layout
-      this._mesh = layout.quads.length === 0 ? undefined : createTextMesh2D(layout)
-      this._inputs = inputs
-    }
+    const lists = [...this.groups()]
 
-    return this._mesh
+    return lists.length === 1 ? lists[0]?.[1] : undefined
   }
 
   /** @inheritDoc */
@@ -129,8 +122,29 @@ export class TextNode extends CanvasItem2D {
     return Matrix3x2.translation(-width / 2, -height / 2)
   }
 
+  /**
+   * Registers the material of a font a run may draw with.
+   *
+   * @param face - Font the material draws.
+   * @param material - Material bound to that font atlas.
+   */
+  public setMaterial(face: Font, material: GraphicMaterial): void {
+    this._materials.set(face, material)
+  }
+
+  /** @inheritDoc */
+  protected override collectDraw(commands: Draw2DCommand[]): void {
+    const meshes = this.groups()
+    for (const [face, mesh] of meshes) {
+      const material = this._materials.get(face)
+      commands.push(
+        this.createCommand(mesh, this.shapeTransform, material === undefined ? {} : { material }),
+      )
+    }
+  }
+
   protected override onDestroy(): void {
-    if (this._mesh !== undefined && !this._mesh.destroyed) this._mesh.destroy()
+    this.disposeMeshes()
     for (const store of [
       this.text,
       this.font,
@@ -143,6 +157,38 @@ export class TextNode extends CanvasItem2D {
     }
 
     super.onDestroy()
+  }
+
+  private groups(): ReadonlyMap<Font, GraphicMesh2D> {
+    const inputs: TextInputs = [
+      this.text.value,
+      this.font.value,
+      this.pixelSize.value,
+      this.align.value,
+      this.wrapWidth.value,
+      this.lineSpacing.value,
+    ]
+    if (sameInputs(this._inputs, inputs)) return this._meshes
+
+    this.disposeMeshes()
+    const layout = this.layout
+    for (const [face, quads] of groupQuadsByFont(layout)) {
+      if (quads.length === 0) continue
+      this._meshes.set(face, createTextMesh2D(layout, quads))
+    }
+
+    this._inputs = inputs
+
+    return this._meshes
+  }
+
+  private disposeMeshes(): void {
+    for (const mesh of this._meshes.values()) {
+      if (!mesh.destroyed) mesh.destroy()
+    }
+
+    this._meshes.clear()
+    this._inputs = undefined
   }
 }
 

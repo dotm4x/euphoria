@@ -3,11 +3,12 @@ import { describe, expect, it } from 'vitest'
 import {
   Color,
   type Draw2DCommand,
+  Font,
   TextAlignment,
   TextNode,
   Vector2,
 } from '../../../../source/index.js'
-import { createFont } from '../../text/fixtures.js'
+import { createAtlas, createFont } from '../../text/fixtures.js'
 
 import { createContext, createMaterial } from './harness.js'
 
@@ -97,6 +98,52 @@ describe('TextNode', () => {
 
     expect(node.position.value).toEqual(new Vector2(3, 4))
     expect(node.align.value).toBe(TextAlignment.left)
+    node.destroy()
+  })
+
+  it('draws one command per font and binds the material of each atlas', () => {
+    const font = createFont()
+    const second = new Font({
+      family: 'second',
+      size: 10,
+      lineHeight: 12,
+      ascent: 8,
+      descent: 2,
+      atlas: createAtlas(16),
+      glyphs: font.characters.flatMap((character) => {
+        const glyph = font.glyph(character)
+
+        return glyph === undefined ? [] : [glyph]
+      }),
+    })
+    const body = createMaterial()
+    const other = createMaterial()
+    const node = new TextNode({
+      font,
+      material: body,
+      materials: [[second, other]],
+      text: [{ text: 'A' }, { text: 'B', font: second, pixelSize: 10 }],
+    })
+
+    const commands = node.draw(createContext()).commands
+
+    expect(commands).toHaveLength(2)
+    expect((commands[0] as Draw2DCommand).material).toBe(body)
+    expect((commands[1] as Draw2DCommand).material).toBe(other)
+    node.destroy()
+    body.destroy()
+    other.destroy()
+    second.destroy()
+  })
+
+  it('keeps runs that only change size in one command', () => {
+    const node = new TextNode({
+      font: createFont(),
+      material: createMaterial(),
+      text: [{ text: 'A' }, { text: 'B', pixelSize: 20, color: new Color(1, 0, 0, 1) }],
+    })
+
+    expect(node.draw(createContext()).commands).toHaveLength(1)
     node.destroy()
   })
 

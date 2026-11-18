@@ -91,13 +91,14 @@ export abstract class VisualInstance3D extends Node3D implements Drawable {
    * Creates a command that inherits the material, tint and environment of this node.
    *
    * @param mesh - Geometry to draw.
+   * @param material - Material to use instead of the inherited one.
    * @returns A draw command ready to be collected.
    * @throws {@link Error} If no material is available.
    */
-  protected createCommand(mesh: GraphicMesh3D): Draw3DCommand {
+  protected createCommand(mesh: GraphicMesh3D, material?: GraphicMaterial): Draw3DCommand {
     return new Draw3DCommand({
       mesh,
-      material: this.resolveMaterial(),
+      material: material ?? this.resolveMaterial(),
       transform: this.globalTransform,
       environment: this.resolveEnvironment(),
       order: this.order.value,

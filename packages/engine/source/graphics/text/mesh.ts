@@ -5,6 +5,7 @@ import { GraphicMesh2D } from '../geometry/mesh2d.js'
 import { GraphicMesh3D } from '../geometry/mesh3d.js'
 import { GraphicVertex2D } from '../geometry/vertex2d.js'
 import { Vertex3D } from '../geometry/vertex3d.js'
+import { type Font } from '../resources/font.js'
 
 import { type TextGlyphQuad, type TextLayout } from './layout.js'
 
@@ -18,12 +19,16 @@ const forward = new Vector3(0, 0, 1)
  * sharing one material while two runs on the same line have different colors.
  *
  * @param layout - Text placed in world units.
+ * @param quads - Glyphs to build, or every glyph of the layout.
  * @returns A mesh with one quad per glyph, in the coordinate system of the layout.
  */
-export function createTextMesh2D(layout: TextLayout): GraphicMesh2D {
+export function createTextMesh2D(
+  layout: TextLayout,
+  quads: readonly TextGlyphQuad[] = layout.quads,
+): GraphicMesh2D {
   const vertices: GraphicVertex2D[] = []
   const indices: number[] = []
-  for (const quad of layout.quads) {
+  for (const quad of quads) {
     const first = vertices.length
     vertices.push(...quadVertices2D(quad))
     indices.push(first, first + 1, first + 2, first, first + 2, first + 3)
@@ -41,12 +46,17 @@ export function createTextMesh2D(layout: TextLayout): GraphicMesh2D {
  *
  * @param layout - Text placed in world units.
  * @param depth - Depth offset applied to every glyph; defaults to zero.
+ * @param quads - Glyphs to build, or every glyph of the layout.
  * @returns A mesh with one quad per glyph.
  */
-export function createTextMesh3D(layout: TextLayout, depth: number = 0): GraphicMesh3D {
+export function createTextMesh3D(
+  layout: TextLayout,
+  depth: number = 0,
+  quads: readonly TextGlyphQuad[] = layout.quads,
+): GraphicMesh3D {
   const vertices: Vertex3D[] = []
   const indices: number[] = []
-  for (const quad of layout.quads) {
+  for (const quad of quads) {
     const first = vertices.length
     vertices.push(...quadVertices3D(quad, depth))
     indices.push(first, first + 1, first + 2, first, first + 2, first + 3)
@@ -89,4 +99,26 @@ function quadVertices3D(quad: TextGlyphQuad, depth: number): readonly Vertex3D[]
     new Vertex3D(new Vector3(right, bottom, depth), forward, new Vector2(quad.u1, quad.v1)),
     new Vertex3D(new Vector3(left, bottom, depth), forward, new Vector2(quad.u0, quad.v1)),
   ]
+}
+
+/**
+ * Groups the glyphs of a layout by the font they draw with.
+ *
+ * A node draws one mesh per group, because glyphs from two fonts sample two
+ * atlases and a material binds only one.
+ *
+ * @param layout - Text placed in world units.
+ * @returns The glyphs of every font, in the order the fonts first appear.
+ */
+export function groupQuadsByFont(
+  layout: TextLayout,
+): readonly (readonly [Font, readonly TextGlyphQuad[]])[] {
+  const groups = new Map<Font, TextGlyphQuad[]>()
+  for (const quad of layout.quads) {
+    const group = groups.get(quad.font)
+    if (group === undefined) groups.set(quad.font, [quad])
+    else group.push(quad)
+  }
+
+  return [...groups]
 }
