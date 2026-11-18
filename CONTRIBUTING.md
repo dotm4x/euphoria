@@ -121,10 +121,13 @@ Keep package-specific dependencies and scripts in the relevant package. See
 [packages/README.md](./packages/README.md) for workspace and TypeScript project configuration.
 Do not commit generated output, dependencies, or secrets.
 
-Run `pnpm --filter @euphoria/playground dev` to open the web playground. Its Vite server loads Euphoria
-source directly, so changes to the package are reflected during development. Use
-`pnpm --filter @euphoria/playground build` for a production build and
-`pnpm --filter @euphoria/playground preview` to preview it.
+Run `pnpm --filter @euphoria/playground dev` to open the playground, a Storybook whose
+HTML and Vite framework loads Euphoria source directly, so changes to the package are reflected
+while you work. Each example is a story under `apps/playground/source/stories`; a shared runtime in
+`apps/playground/source/runtime` builds the engine, mounts it into the story and disposes it when
+the next story takes over. Use `pnpm --filter @euphoria/playground build` for a static build under
+`apps/playground/storybook-static`, and `pnpm --filter @euphoria/playground bench` to measure the
+ball scenes.
 
 ## Commits
 

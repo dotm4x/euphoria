@@ -161,6 +161,14 @@ export class Physics3DScene extends Node {
     )
   }
 
+  /** Values the statistics panel shows for this scene. */
+  public readouts(): Iterable<readonly [string, string]> {
+    return [
+      ['Cubes', String(this.cubes.length)],
+      ['Chain links', String(this.links.length)],
+    ]
+  }
+
   private createBody(
     name: string,
     motion: MotionType,

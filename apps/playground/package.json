@@ -4,12 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "pnpm --filter @euphoria/engine build && tsc --noEmit -p tsconfig.json && vite build",
-    "dev": "pnpm --filter @euphoria/engine build && vite",
+    "build": "pnpm --filter @euphoria/engine build && tsc --noEmit -p tsconfig.json && storybook build",
+    "dev": "pnpm --filter @euphoria/engine build && storybook dev -p 6006",
     "start": "pnpm dev",
-    "preview": "vite preview",
     "typecheck": "pnpm --filter @euphoria/engine build && tsc --noEmit -p tsconfig.json",
-    "bench": "node scripts/bench-balls.mjs"
+    "bench": "node scripts/bench-balls.mjs",
+    "storybook": "storybook dev -p 6006"
   },
   "dependencies": {
     "@euphoria/engine": "workspace:*"

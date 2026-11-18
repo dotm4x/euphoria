@@ -16,24 +16,6 @@ import {
 
 import { type Ball, createBalls } from './simulation.js'
 
-/** Benchmark data published on the window for measurement tools. */
-export interface BallsBenchmark {
-  readonly mode: string
-  readonly count: number
-  readonly nodes: number
-  readonly frames: number
-  readonly elapsed: number
-  readonly fps: number
-  readonly drawCalls?: number
-  readonly commands?: number
-}
-
-declare global {
-  interface Window {
-    ballsFrameStats?: BallsBenchmark
-  }
-}
-
 export type BallsMode = 'single' | 'nodes'
 
 const arena = { width: 620, height: 340 }
@@ -94,14 +76,10 @@ export class BallNode extends RectNode implements Updatable {
 }
 
 /** Scene that renders a configurable number of bouncing balls. */
-export class BallsScene extends Node2D implements Updatable {
+export class BallsScene extends Node2D {
   public readonly camera: Camera2D
   public readonly mode: BallsMode
   public readonly count: number
-  private readonly _started: number = performance.now()
-  private _frames: number = 0
-  private _windowFrames: number = 0
-  private _windowStart: number = performance.now()
 
   public constructor(material: GraphicMaterial, camera: Camera2D, mode: BallsMode, count: number) {
     const children: Node2D[] = []
@@ -117,23 +95,12 @@ export class BallsScene extends Node2D implements Updatable {
     this.count = count
   }
 
-  public update(): void {
-    this._frames++
-    this._windowFrames++
-    const now = performance.now()
-    if (now - this._windowStart < 500) return
-    const fps = (this._windowFrames * 1000) / (now - this._windowStart)
-    window.ballsFrameStats = {
-      mode: this.mode,
-      count: this.count,
-      nodes: this.mode === 'single' ? 1 : this.count,
-      frames: this._frames,
-      elapsed: (now - this._started) / 1000,
-      fps,
-    }
-    const output = document.querySelector('#fps')
-    if (output !== null) output.textContent = fps.toFixed(1)
-    this._windowFrames = 0
-    this._windowStart = now
+  /** Values the statistics panel shows for this scene. */
+  public readouts(): Iterable<readonly [string, string]> {
+    return [
+      ['Mode', this.mode],
+      ['Balls', String(this.count)],
+      ['Nodes', String(this.mode === 'single' ? 1 : this.count)],
+    ]
   }
 }

@@ -13,7 +13,7 @@ import {
   Vector2,
 } from '@euphoria/engine'
 
-import { MyInputModule } from '../../input/module.js'
+import { PlaygroundInputModule } from '../../runtime/input/module.js'
 
 import { SnakeDirection, SnakeGame, SnakeState } from './game.js'
 
@@ -75,11 +75,18 @@ export class SnakeScene extends Node2D implements Updatable {
   public update(context: UpdateContext): void {
     this.game.update(context.deltaTime)
     this.sync()
-    this.syncStatus()
+  }
+
+  /** Values the statistics panel shows for this scene. */
+  public readouts(): Iterable<readonly [string, string]> {
+    return [
+      ['Score', String(this.game.score)],
+      ['State', this.statusText()],
+    ]
   }
 
   protected override configure(): void {
-    const keyboard = this.require(MyInputModule).keyboard
+    const keyboard = this.require(PlaygroundInputModule).keyboard
     const steer = (event: KeyboardInputEvent, direction: SnakeDirection): void => {
       event.connect(({ down, repeat }) => {
         if (!down || repeat) return
@@ -141,24 +148,18 @@ export class SnakeScene extends Node2D implements Updatable {
     this._food.visible.value = this.game.state !== SnakeState.over
   }
 
-  private syncStatus(): void {
-    const score = document.querySelector('#score')
-    if (score !== null) score.textContent = String(this.game.score)
-
-    const status = document.querySelector('#status')
-    if (status === null) return
+  private statusText(): string {
     switch (this.game.state) {
       case SnakeState.ready:
-        status.textContent = 'Arrows or WASD to start'
-        break
+        return 'Arrows or WASD to start'
       case SnakeState.paused:
-        status.textContent = 'Paused — Space to resume'
-        break
+        return 'Paused — Space to resume'
       case SnakeState.over:
-        status.textContent = `Game over — score ${String(this.game.score)}. R to restart`
-        break
+        return `Game over — score ${String(this.game.score)}. R to restart`
       case SnakeState.running:
-        status.textContent = ''
+        return 'Running'
     }
+
+    return 'Running'
   }
 }

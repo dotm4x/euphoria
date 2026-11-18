@@ -20,7 +20,7 @@ import {
   Vector3,
 } from '@euphoria/engine'
 
-import { MyInputModule } from '../input/module.js'
+import { PlaygroundInputModule } from '../runtime/input/module.js'
 
 /** A mesh instance that spins around the vertical axis. */
 class SpinningMesh extends MeshInstance3D implements Updatable {
@@ -124,9 +124,17 @@ export class CubeScene extends Node3D implements Updatable {
     this._sun.rotation.value = new Vector3(sunRotation.x, this._elapsed * 0.2, sunRotation.z)
   }
 
+  /** Values the statistics panel shows for this scene. */
+  public readouts(): Iterable<readonly [string, string]> {
+    return [
+      ['Camera speed', this._speed.toFixed(1)],
+      ['Status', this._status],
+    ]
+  }
+
   /** @inheritDoc */
   protected override configure(): void {
-    const { keyboard, mouse } = this.require(MyInputModule)
+    const { keyboard, mouse } = this.require(PlaygroundInputModule)
     this._mouse = mouse
     const hold = (event: KeyboardInputEvent, code: string): void => {
       event.connect(({ down }) => {
@@ -192,13 +200,9 @@ export class CubeScene extends Node3D implements Updatable {
   private syncStatus(): void {
     const locked = this._mouse?.locked.value === true
     const help = `speed ${this._speed.toFixed(1)} · wheel to change`
-    const status = locked
+    this._status = locked
       ? `Pointer locked · mouse to look · WASD to fly · Q/E up and down · Shift to boost · ${help}`
       : `Click to lock the pointer · drag to look · WASD to fly · Q/E up and down · ${help}`
-    if (status === this._status) return
-    this._status = status
-    const element = document.querySelector('#status')
-    if (element !== null) element.textContent = status
   }
 
   private moveCamera(deltaTime: number): void {

@@ -10,11 +10,12 @@ import {
   PhysicsBody2D,
   RectNode,
   RevoluteJoint2D,
-  type SimulationSpace2D,
+  type SimulationSpace,
+  SimulationSpace2D,
   Vector2,
 } from '@euphoria/engine'
 
-import { MyInputModule } from '../input/module.js'
+import { PlaygroundInputModule } from '../runtime/input/module.js'
 
 /** Half size of a falling box. */
 const boxHalfExtents: Vector2 = new Vector2(0.4, 0.4)
@@ -162,12 +163,22 @@ export class PhysicsScene extends Node {
     return this._hits
   }
 
+  /** Values the statistics panel shows for this scene. */
+  public readouts(): Iterable<readonly [string, string]> {
+    return [
+      ['Sensor hits', String(this._hits)],
+      ['Boxes', String(this.boxes.length)],
+      ['Chain links', String(this.links.length)],
+    ]
+  }
+
   /**
    * Binds the space that steps this scene.
    *
-   * @param space - Two-dimensional space that owns the bodies of the scene.
+   * @param space - Space that owns the bodies of the scene.
    */
-  public attach(space: SimulationSpace2D): void {
+  public attach(space: SimulationSpace): void {
+    if (!(space instanceof SimulationSpace2D)) return
     this._space = space
     space.onContact.connect((contact) => {
       if (!this.loaded || !contact.started) return
@@ -178,7 +189,7 @@ export class PhysicsScene extends Node {
 
   /** @inheritDoc */
   protected override configure(): void {
-    const { keyboard, mouse } = this.require(MyInputModule)
+    const { keyboard, mouse } = this.require(PlaygroundInputModule)
     keyboard.debug.connect(({ down }) => {
       if (!down || !this.loaded) return
       this._outlinesVisible = !this._outlinesVisible

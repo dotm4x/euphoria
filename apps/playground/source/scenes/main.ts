@@ -11,7 +11,7 @@ import {
   ViewportNode,
 } from '@euphoria/engine'
 
-import { createVignetteMaterial } from '../renderer/vignette.js'
+import { createVignetteMaterial } from '../runtime/renderer/vignette.js'
 
 import { createTriangleMesh } from './triangle.js'
 

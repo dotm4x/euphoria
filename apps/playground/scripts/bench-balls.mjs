@@ -17,13 +17,14 @@ const rendererInfo = `(() => {
   }
 })()`
 
-const server = spawn('pnpm', ['exec', 'vite', '--port', String(port), '--strictPort'], {
-  cwd: root,
-  stdio: 'ignore',
-})
+const server = spawn(
+  'pnpm',
+  ['exec', 'storybook', 'dev', '-p', String(port), '--no-open', '--quiet'],
+  { cwd: root, stdio: 'ignore' },
+)
 
 async function waitForServer(url) {
-  for (let attempt = 0; attempt < 120; attempt++) {
+  for (let attempt = 0; attempt < 240; attempt++) {
     try {
       const response = await fetch(url)
       if (response.ok) return
@@ -31,7 +32,7 @@ async function waitForServer(url) {
       // Server still starting.
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 250))
+    await new Promise((resolve) => setTimeout(resolve, 500))
   }
 
   throw new Error('The playground server did not start.')
@@ -41,8 +42,15 @@ function format(value, digits = 2) {
   return Number(value).toFixed(digits).padStart(8)
 }
 
+function storyUrl(mode, count, frames) {
+  const args = `args=count:${String(count)};mode:${mode}`
+  const query = `${args}&bench=render&frames=${String(frames)}&viewMode=story`
+
+  return `http://localhost:${String(port)}/iframe.html?id=benchmarks-balls--balls&${query}`
+}
+
 try {
-  await waitForServer(`http://localhost:${String(port)}/`)
+  await waitForServer(`http://localhost:${String(port)}/index.json`)
   const browser = await chromium.launch()
   const page = await browser.newPage({
     viewport: { width: 900, height: 700 },
@@ -58,8 +66,7 @@ try {
   for (const mode of ['single', 'nodes']) {
     for (const count of counts) {
       const frames = count >= 5000 ? 90 : 180
-      const url = `http://localhost:${String(port)}/?scene=balls&mode=${mode}&count=${String(count)}&bench=render&frames=${String(frames)}`
-      await page.goto(url)
+      await page.goto(storyUrl(mode, count, frames))
       await page.waitForFunction('document.body.dataset.bench === "done"', undefined, {
         timeout: 180000,
       })
