@@ -5,7 +5,7 @@ import { type BodyDescriptor2D } from '#/physics/descriptors/2d/body.js'
 import { type ColliderDescriptor2D } from '#/physics/descriptors/2d/collider.js'
 import { type JointDescriptor2D } from '#/physics/descriptors/2d/joint.js'
 import { type BodyState2D } from '#/physics/descriptors/2d/state.js'
-import { type BodyContact } from '#/physics/descriptors/contact.js'
+import { type BodyContact2D, type ContactPoint2D } from '#/physics/descriptors/contact.js'
 import { type RayHit2D, type RayQueryOptions } from '#/physics/interfaces/ray.js'
 import { Dimension } from '#/physics/primitives/dimension.js'
 import { MotionType } from '#/physics/primitives/motion.js'
@@ -18,6 +18,7 @@ import {
 } from '../backend.js'
 
 import {
+  applyMassProperties,
   interactionGroups,
   motionBodyType,
   toColliderDesc,
@@ -64,13 +65,13 @@ export interface RapierBackend2DOptions {
 export class RapierBackend2D extends SimulationBackend2D {
   private readonly _rapier: typeof Rapier
   private readonly _world: Rapier.World
-  private readonly _queue: Rapier.EventQueue
   private readonly _records: Map<string, RapierRecord> = new Map<string, RapierRecord>()
   private readonly _joints: Map<string, RapierJointRecord> = new Map<string, RapierJointRecord>()
   private readonly _owners: Map<number, string> = new Map<number, string>()
   private readonly _colliderIdentifiers: Map<number, string> = new Map<number, string>()
-  private _contacts: BodyContact[] = []
+  private _contacts: BodyContact2D[] = []
   private _contactCount: number = 0
+  private _previousPairs: Map<string, ColliderRef2D[]> = new Map<string, ColliderRef2D[]>()
   private _steps: number = 0
 
   /** @inheritDoc */
@@ -93,7 +94,6 @@ export class RapierBackend2D extends SimulationBackend2D {
     super(identifier)
     this._rapier = rapier
     this._world = new rapier.World({ x: gravity.x, y: gravity.y })
-    this._queue = new rapier.EventQueue(true)
   }
 
   /** @inheritDoc */
@@ -158,17 +158,7 @@ export class RapierBackend2D extends SimulationBackend2D {
       if (descriptor.torque !== 0) body.applyTorqueImpulse(descriptor.torque * step, true)
     }
 
-    this._world.step(this._queue)
-    this._queue.drainCollisionEvents((first, second, started) => {
-      const identifier = this._owners.get(first)
-      const other = this._owners.get(second)
-      if (identifier === undefined || other === undefined || identifier === other) return
-      this._contacts.push(
-        { identifier, other, started },
-        { identifier: other, other: identifier, started },
-      )
-    })
-    this._contactCount = this._contacts.length
+    this._world.step()
     this._steps++
   }
 
@@ -190,8 +180,9 @@ export class RapierBackend2D extends SimulationBackend2D {
       })
     }
 
-    const contacts = this._contacts
-    this._contacts = []
+    const contacts = this.collectContacts()
+    this._contactCount = contacts.length
+    this._contacts = contacts
 
     return { states, contacts }
   }
@@ -240,8 +231,86 @@ export class RapierBackend2D extends SimulationBackend2D {
     this._colliderIdentifiers.clear()
     this._contacts = []
     this._world.free()
-    this._queue.free()
     super.onDestroy()
+  }
+
+  private collectContacts(): BodyContact2D[] {
+    const contacts: BodyContact2D[] = []
+    const visited = new Set<string>()
+    const touching = new Map<string, ColliderRef2D[]>()
+    for (const record of this._records.values()) {
+      for (const { collider } of record.colliders.values()) {
+        this._world.contactPairsWith(collider, (other) => {
+          this.collectPair(contacts, visited, touching, collider, other, false)
+          return true
+        })
+        this._world.intersectionPairsWith(collider, (other) => {
+          this.collectPair(contacts, visited, touching, collider, other, true)
+          return true
+        })
+      }
+    }
+
+    for (const [key, pair] of this._previousPairs) {
+      if (touching.has(key)) continue
+      const first = pair[0]
+      const second = pair[1]
+      if (first === undefined || second === undefined) continue
+      contacts.push(endedContact2D(first, second), endedContact2D(second, first))
+    }
+
+    this._previousPairs = touching
+    return contacts
+  }
+
+  private collectPair(
+    contacts: BodyContact2D[],
+    visited: Set<string>,
+    touching: Map<string, ColliderRef2D[]>,
+    first: Rapier.Collider,
+    second: Rapier.Collider,
+    sensor: boolean,
+  ): void {
+    const key = pairKey(first.handle, second.handle)
+    if (visited.has(key)) return
+    visited.add(key)
+    const points = sensor ? [] : this.manifoldPoints(first, second)
+    if (!sensor && points.length === 0) return
+    const firstRef = this.reference(first)
+    const secondRef = this.reference(second)
+    if (firstRef === undefined || secondRef === undefined) return
+    touching.set(key, [firstRef, secondRef])
+    const started = !this._previousPairs.has(key)
+    contacts.push(
+      contact2D(firstRef, secondRef, started, points),
+      contact2D(secondRef, firstRef, started, flipPoints2D(points)),
+    )
+  }
+
+  private reference(collider: Rapier.Collider): ColliderRef2D | undefined {
+    const identifier = this._owners.get(collider.handle)
+    if (identifier === undefined) return undefined
+    return { identifier, collider: this._colliderIdentifiers.get(collider.handle) }
+  }
+
+  private manifoldPoints(first: Rapier.Collider, second: Rapier.Collider): ContactPoint2D[] {
+    const points: ContactPoint2D[] = []
+    this._world.contactPair(first, second, (manifold, flipped) => {
+      const normal = manifold.normal()
+      const count = manifold.numSolverContacts()
+      for (let index = 0; index < count; index++) {
+        const point = manifold.solverContactPoint(index)
+        if (point === null) continue
+        points.push({
+          point: new Vector2(point.x, point.y),
+          normal: new Vector2(flipped ? normal.x : -normal.x, flipped ? normal.y : -normal.y),
+          impulse: manifold.contactImpulse(index),
+          distance: manifold.solverContactDist(index),
+        })
+      }
+    })
+
+    return points
   }
 
   private createBody(descriptor: BodyDescriptor2D): void {
@@ -251,6 +320,8 @@ export class RapierBackend2D extends SimulationBackend2D {
       colliders.set(collider.identifier, this.createCollider(descriptor.identifier, body, collider))
     }
 
+    applyMassProperties(body, descriptor)
+    applyPushes(body, descriptor)
     this._records.set(descriptor.identifier, { body, colliders, descriptor })
   }
 
@@ -316,6 +387,13 @@ export class RapierBackend2D extends SimulationBackend2D {
 
     if (descriptor.angularImpulse !== 0) body.applyTorqueImpulse(descriptor.angularImpulse, true)
     this.updateColliders(record, descriptor)
+    if (
+      record.descriptor.mass !== descriptor.mass ||
+      record.descriptor.inertia !== descriptor.inertia
+    ) {
+      applyMassProperties(record.body, descriptor)
+    }
+
     record.descriptor = descriptor
   }
 
@@ -391,4 +469,63 @@ export class RapierBackend2D extends SimulationBackend2D {
       record.colliders.delete(identifier)
     }
   }
+}
+
+function applyPushes(body: Rapier.RigidBody, descriptor: BodyDescriptor2D): void {
+  if (descriptor.motion !== MotionType.dynamic) return
+  const impulse = descriptor.impulse
+  if (impulse.x !== 0 || impulse.y !== 0) {
+    body.applyImpulse({ x: impulse.x, y: impulse.y }, true)
+  }
+
+  if (descriptor.angularImpulse !== 0) {
+    body.applyTorqueImpulse(descriptor.angularImpulse, true)
+  }
+}
+
+interface ColliderRef2D {
+  readonly identifier: string
+  readonly collider: string | undefined
+}
+
+function pairKey(first: number, second: number): string {
+  return first < second
+    ? `${first.toString()}:${second.toString()}`
+    : `${second.toString()}:${first.toString()}`
+}
+
+function contact2D(
+  own: ColliderRef2D,
+  other: ColliderRef2D,
+  started: boolean,
+  points: readonly ContactPoint2D[],
+): BodyContact2D {
+  return {
+    identifier: own.identifier,
+    collider: own.collider,
+    other: other.identifier,
+    otherCollider: other.collider,
+    started,
+    touching: true,
+    points,
+  }
+}
+
+function endedContact2D(own: ColliderRef2D, other: ColliderRef2D): BodyContact2D {
+  return {
+    identifier: own.identifier,
+    collider: own.collider,
+    other: other.identifier,
+    otherCollider: other.collider,
+    started: false,
+    touching: false,
+    points: [],
+  }
+}
+
+function flipPoints2D(points: readonly ContactPoint2D[]): ContactPoint2D[] {
+  return points.map((point) => ({
+    ...point,
+    normal: new Vector2(-point.normal.x, -point.normal.y),
+  }))
 }

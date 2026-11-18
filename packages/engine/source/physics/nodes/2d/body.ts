@@ -1,4 +1,6 @@
 import { ReactiveSet } from '#/core/collections/reactive-set.js'
+import { type ReadOnlySignal, Signal } from '#/core/events/signal.js'
+import { type ReadOnlyStore } from '#/core/events/store.js'
 import { Store } from '#/core/events/store.js'
 import { type Node } from '#/core/node/node.js'
 import { Node2D, type Node2DOptions } from '#/math/nodes/node2d.js'
@@ -9,7 +11,7 @@ import { BodyDescriptor2D } from '../../descriptors/2d/body.js'
 import { type ColliderDescriptor2D } from '../../descriptors/2d/collider.js'
 import { type BodyState2D } from '../../descriptors/2d/state.js'
 import { type SimulationContext } from '../../interfaces/context.js'
-import { type Simulable2D } from '../../interfaces/simulable.js'
+import { type Simulable2D, type SimulableContact2D } from '../../interfaces/simulable.js'
 import { MotionType } from '../../primitives/motion.js'
 
 /** Configuration for a physics body. */
@@ -22,6 +24,10 @@ export interface PhysicsBody2DOptions extends Node2DOptions {
   readonly linearVelocity?: Vector2
   /** Angular velocity, in radians per second; defaults to zero. */
   readonly angularVelocity?: number
+  /** Total mass in kilograms; defaults to `0`, which derives it from the collider densities. */
+  readonly mass?: number
+  /** Angular inertia around the origin; needs mass; defaults to `0`, which derives it from the shapes. */
+  readonly inertia?: number
   /** Multiplier applied to the simulation gravity; defaults to `1`. */
   readonly gravityScale?: number
   /** Fraction of linear velocity removed each second; defaults to `0`. */
@@ -51,6 +57,12 @@ export class PhysicsBody2D extends Node2D implements Simulable2D {
   private _impulse: Vector2 = new Vector2(0, 0)
   private _torque: number = 0
   private _angularImpulse: number = 0
+
+  private readonly _contact: Signal<[SimulableContact2D]> = new Signal<[SimulableContact2D]>()
+  private readonly _touching: Store<readonly SimulableContact2D[]> = new Store<
+    readonly SimulableContact2D[]
+  >([])
+
   private _teleportPending: boolean = false
 
   /** How the body takes part in the simulation. */
@@ -64,6 +76,12 @@ export class PhysicsBody2D extends Node2D implements Simulable2D {
 
   /** Angular velocity, in radians per second. */
   public readonly angularVelocity: Store<number>
+
+  /** Total mass in kilograms, or `0` when it derives from the collider densities. */
+  public readonly mass: Store<number>
+
+  /** Angular inertia, or `0` when it derives from the collider shapes. */
+  public readonly inertia: Store<number>
 
   /** Multiplier applied to the simulation gravity. */
   public readonly gravityScale: Store<number>
@@ -83,6 +101,12 @@ export class PhysicsBody2D extends Node2D implements Simulable2D {
   /** Whether the simulation put the body to sleep. */
   public readonly sleeping: Store<boolean>
 
+  /** Fired for every contact of this body, resolved to the objects that own it. */
+  public readonly onContact: ReadOnlySignal<[SimulableContact2D]> = this._contact
+
+  /** Contacts that still overlap after the last step, with their points. */
+  public readonly touching: ReadOnlyStore<readonly SimulableContact2D[]> = this._touching
+
   /**
    * @param options - Transformation, motion, colliders and integration settings.
    */
@@ -91,6 +115,8 @@ export class PhysicsBody2D extends Node2D implements Simulable2D {
     colliders = [],
     linearVelocity = new Vector2(0, 0),
     angularVelocity = 0,
+    mass = 0,
+    inertia = 0,
     gravityScale = 1,
     linearDamping = 0,
     angularDamping = 0,
@@ -104,6 +130,8 @@ export class PhysicsBody2D extends Node2D implements Simulable2D {
     this.colliders = new ReactiveSet(colliders)
     this.linearVelocity = new Store(linearVelocity)
     this.angularVelocity = new Store(angularVelocity)
+    this.mass = new Store(mass)
+    this.inertia = new Store(inertia)
     this.gravityScale = new Store(gravityScale)
     this.linearDamping = new Store(linearDamping)
     this.angularDamping = new Store(angularDamping)
@@ -123,6 +151,8 @@ export class PhysicsBody2D extends Node2D implements Simulable2D {
       colliders: [...this.colliders],
       linearVelocity: this.linearVelocity.value,
       angularVelocity: this.angularVelocity.value,
+      mass: this.mass.value,
+      inertia: this.inertia.value,
       gravityScale: this.gravityScale.value,
       linearDamping: this.linearDamping.value,
       angularDamping: this.angularDamping.value,
@@ -152,6 +182,38 @@ export class PhysicsBody2D extends Node2D implements Simulable2D {
     this.rotation.value = state.rotation
     this.linearVelocity.value = state.linearVelocity
     this.angularVelocity.value = state.angularVelocity
+  }
+
+  /**
+   * Fires the contact signal of this body.
+   *
+   * The simulation space calls it for every contact of the bodies this node
+   * produced, after resolving both sides to their objects.
+   *
+   * @param contact - The resolved contact.
+   */
+  public notifyContact(contact: SimulableContact2D): void {
+    if (this.destroyed) return
+    this._contact.fire(contact)
+  }
+
+  /**
+   * Replaces the contacts that still overlap after a step.
+   *
+   * @param contacts - Contacts that remain touching, with their points.
+   */
+  public notifyTouching(contacts: readonly SimulableContact2D[]): void {
+    if (this.destroyed) return
+    this._touching.value = contacts
+  }
+
+  /**
+   * Whether the body still overlaps another shape after the last step.
+   *
+   * @returns Whether any contact of this body remains touching.
+   */
+  public isTouching(): boolean {
+    return this._touching.value.length > 0
   }
 
   /**
@@ -210,6 +272,8 @@ export class PhysicsBody2D extends Node2D implements Simulable2D {
       this.motion,
       this.linearVelocity,
       this.angularVelocity,
+      this.mass,
+      this.inertia,
       this.gravityScale,
       this.linearDamping,
       this.angularDamping,
@@ -220,6 +284,9 @@ export class PhysicsBody2D extends Node2D implements Simulable2D {
     for (const store of stores) {
       if (!store.destroyed) store.destroy()
     }
+
+    if (!this._contact.destroyed) this._contact.destroy()
+    if (!this._touching.destroyed) this._touching.destroy()
   }
 
   /** @inheritDoc */

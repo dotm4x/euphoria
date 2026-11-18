@@ -7,6 +7,7 @@ import {
   MotionType,
   Node2D,
   PhysicsBody2D,
+  type SimulableContact2D,
   type SimulationContext,
   Vector2,
 } from '../../../../source/index.js'
@@ -104,6 +105,41 @@ describe('PhysicsBody2D', () => {
     expect(fixed.rotation.value).toBe(0)
     dynamic.destroy()
     fixed.destroy()
+  })
+
+  it('fires its contact signal when the simulation resolves a contact', () => {
+    const body = new PhysicsBody2D()
+    const other = new PhysicsBody2D()
+    body.load()
+    other.load()
+    const seen: SimulableContact2D[] = []
+    body.onContact.connect((contact) => seen.push(contact))
+
+    body.notifyContact({
+      owner: body,
+      other,
+      collider: 'shape',
+      otherCollider: undefined,
+      started: true,
+      touching: true,
+      points: [],
+    })
+    body.destroy()
+    body.notifyContact({
+      owner: body,
+      other,
+      collider: 'shape',
+      otherCollider: undefined,
+      started: false,
+      touching: false,
+      points: [],
+    })
+
+    expect(seen).toHaveLength(1)
+    expect(seen[0]?.other).toBe(other)
+    expect(seen[0]?.collider).toBe('shape')
+    expect(seen[0]?.started).toBe(true)
+    other.destroy()
   })
 
   it('rejects being placed inside a node that transforms space', () => {

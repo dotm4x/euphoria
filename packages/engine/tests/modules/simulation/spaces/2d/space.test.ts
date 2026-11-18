@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  type BodyContact,
   BodyDescriptor2D,
   type BodyState2D,
   ColliderDescriptor2D,
@@ -10,6 +9,7 @@ import {
   MotionType,
   PhysicsBody2D,
   type Simulable2D,
+  type SimulableContact2D,
   SimulationBackend2D,
   SimulationData2D,
   type SimulationFrame2D,
@@ -55,17 +55,18 @@ class RecordingBackend extends SimulationBackend2D {
 }
 
 class PlainBody implements Simulable2D {
-  public readonly identifier: string
   public states: BodyState2D[] = []
+  public readonly contacts: SimulableContact2D[] = []
+  private readonly _key: string
 
-  public constructor(identifier: string = 'plain') {
-    this.identifier = identifier
+  public constructor(key: string = 'plain') {
+    this._key = key
   }
 
   public simulate(): SimulationData2D {
     return new SimulationData2D([
       new BodyDescriptor2D({
-        identifier: this.identifier,
+        identifier: this._key,
         motion: MotionType.dynamic,
         position: new Vector2(0, 0),
       }),
@@ -74,6 +75,10 @@ class PlainBody implements Simulable2D {
 
   public applyState(state: BodyState2D): void {
     this.states.push(state)
+  }
+
+  public notifyContact(contact: SimulableContact2D): void {
+    this.contacts.push(contact)
   }
 }
 
@@ -144,11 +149,11 @@ describe('SimulationSpace2D', () => {
     space.destroy()
   })
 
-  it('applies resolved states and publishes contacts', () => {
+  it('applies resolved states and leaves unknown bodies unresolved', () => {
     const backend = new RecordingBackend()
     const plain = new PlainBody('plain')
     const space = new SimulationSpace2D({ identifier: 'space', entries: [plain] })
-    const contacts: BodyContact[] = []
+    const contacts: SimulableContact2D[] = []
     space.onContact.connect((contact) => contacts.push(contact))
     const state = {
       identifier: 'plain',
@@ -160,13 +165,77 @@ describe('SimulationSpace2D', () => {
     }
     backend.result = {
       states: [state],
-      contacts: [{ identifier: 'plain', other: 'other', started: true }],
+      contacts: [
+        {
+          identifier: 'plain',
+          collider: 'shape',
+          other: 'unknown',
+          otherCollider: undefined,
+          started: true,
+          touching: true,
+          points: [],
+        },
+      ],
     }
 
     space.step(backend, 1 / 60)
 
     expect(plain.states).toEqual([state])
-    expect(contacts).toEqual([{ identifier: 'plain', other: 'other', started: true }])
+    expect(contacts).toEqual([
+      {
+        owner: plain,
+        other: undefined,
+        collider: 'shape',
+        otherCollider: undefined,
+        started: true,
+        touching: true,
+        points: [],
+      },
+    ])
+    space.destroy()
+  })
+
+  it('publishes contacts resolved to the objects that own each body', () => {
+    const backend = new RecordingBackend()
+    const first = new PlainBody('first')
+    const second = new PlainBody('second')
+    const space = new SimulationSpace2D({ identifier: 'space', entries: [first, second] })
+    const seen: SimulableContact2D[] = []
+    space.onContact.connect((contact) => seen.push(contact))
+    backend.result = {
+      states: [],
+      contacts: [
+        {
+          identifier: 'first',
+          collider: 'a',
+          other: 'second',
+          otherCollider: 'b',
+          started: true,
+          touching: true,
+          points: [],
+        },
+        {
+          identifier: 'second',
+          collider: 'b',
+          other: 'first',
+          otherCollider: 'a',
+          started: false,
+          touching: true,
+          points: [],
+        },
+      ],
+    }
+
+    space.step(backend, 1 / 60)
+
+    expect(seen.map((contact) => [contact.owner, contact.other, contact.started])).toEqual([
+      [first, second, true],
+      [second, first, false],
+    ])
+    expect(seen[0]?.collider).toBe('a')
+    expect(seen[0]?.otherCollider).toBe('b')
+    expect(first.contacts).toEqual([seen[0]])
+    expect(second.contacts).toEqual([seen[1]])
     space.destroy()
   })
 

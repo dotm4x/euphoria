@@ -1,15 +1,19 @@
 import { ReactiveSet } from '#/core/collections/reactive-set.js'
 import { type ReadOnlySignal, Signal } from '#/core/events/signal.js'
-import { Store } from '#/core/events/store.js'
+import { type ReadOnlyStore, Store } from '#/core/events/store.js'
 import { Node } from '#/core/node/node.js'
 import { Vector3 } from '#/math/primitives/vectors/vector3.js'
 import { type BodyDescriptor3D } from '#/physics/descriptors/3d/body.js'
 import { type JointDescriptor3D } from '#/physics/descriptors/3d/joint.js'
 import { type BodyState3D } from '#/physics/descriptors/3d/state.js'
-import { type BodyContact } from '#/physics/descriptors/contact.js'
+import { type BodyContact3D } from '#/physics/descriptors/contact.js'
 import { type SimulationContext } from '#/physics/interfaces/context.js'
 import { type RayHit3D, type RayQueryOptions } from '#/physics/interfaces/ray.js'
-import { acceptsState3D, type Simulable3D } from '#/physics/interfaces/simulable.js'
+import {
+  acceptsState3D,
+  type Simulable3D,
+  type SimulableContact3D,
+} from '#/physics/interfaces/simulable.js'
 import { Dimension } from '#/physics/primitives/dimension.js'
 import { type CollectedBody3D, collectNodeBodies3D } from '#/physics/traversal.js'
 
@@ -34,9 +38,13 @@ export interface SimulationSpace3DOptions extends SimulationSpaceOptions {
  * keep colliding.
  */
 export class SimulationSpace3D extends SimulationSpace {
-  private readonly _contact: Signal<[BodyContact]> = new Signal<[BodyContact]>()
+  private readonly _contact: Signal<[SimulableContact3D]> = new Signal<[SimulableContact3D]>()
   private readonly _owners: Map<string, Simulable3D> = new Map<string, Simulable3D>()
   private _backend: SimulationBackend3D | undefined
+  private _touched: Set<Simulable3D> = new Set<Simulable3D>()
+  private readonly _contacts: Store<readonly SimulableContact3D[]> = new Store<
+    readonly SimulableContact3D[]
+  >([])
 
   /** @inheritDoc */
   public override readonly dimension: Dimension = Dimension.threeDimensional
@@ -50,8 +58,11 @@ export class SimulationSpace3D extends SimulationSpace {
   /** Joints constrained by the space. */
   public readonly joints: ReactiveSet<JointDescriptor3D>
 
-  /** Fired for every contact reported by a step. */
-  public readonly onContact: ReadOnlySignal<[BodyContact]> = this._contact
+  /** Fired for every contact reported by a step, resolved to its objects. */
+  public readonly onContact: ReadOnlySignal<[SimulableContact3D]> = this._contact
+
+  /** Contacts of the latest step, resolved to their objects and with their points. */
+  public readonly contacts: ReadOnlyStore<readonly SimulableContact3D[]> = this._contacts
 
   /**
    * @param options - Identifier, step settings, gravity and initial entries.
@@ -151,6 +162,7 @@ export class SimulationSpace3D extends SimulationSpace {
     this._owners.clear()
     if (!this.gravity.destroyed) this.gravity.destroy()
     if (!this._contact.destroyed) this._contact.destroy()
+    if (!this._contacts.destroyed) this._contacts.destroy()
     super.onDestroy()
   }
 
@@ -182,7 +194,36 @@ export class SimulationSpace3D extends SimulationSpace {
     }
   }
 
-  private publishContacts(contacts: readonly BodyContact[]): void {
-    for (const contact of contacts) this._contact.fire(contact)
+  private publishContacts(contacts: readonly BodyContact3D[]): void {
+    const resolved: SimulableContact3D[] = []
+    const touching = new Map<Simulable3D, SimulableContact3D[]>()
+    for (const contact of contacts) {
+      const owner = this._owners.get(contact.identifier)
+      if (owner === undefined) continue
+      const entry: SimulableContact3D = {
+        owner,
+        other: this._owners.get(contact.other),
+        collider: contact.collider,
+        otherCollider: contact.otherCollider,
+        started: contact.started,
+        touching: contact.touching,
+        points: contact.points,
+      }
+      resolved.push(entry)
+      owner.notifyContact?.(entry)
+      this._contact.fire(entry)
+      if (!contact.touching) continue
+      const list = touching.get(owner)
+      if (list === undefined) touching.set(owner, [entry])
+      else list.push(entry)
+    }
+
+    for (const owner of this._touched) {
+      if (!touching.has(owner)) owner.notifyTouching?.([])
+    }
+
+    for (const [owner, list] of touching) owner.notifyTouching?.(list)
+    this._touched = new Set(touching.keys())
+    this._contacts.value = resolved
   }
 }

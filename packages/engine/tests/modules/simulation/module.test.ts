@@ -65,7 +65,6 @@ class RecordingBackend extends SimulationBackend2D {
 
 function createEntry(identifier: string, order: string[]): Simulable2D {
   return {
-    identifier,
     simulate: () => {
       order.push(identifier)
       return new SimulationData2D([])

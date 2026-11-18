@@ -20,6 +20,10 @@ export interface BodyDescriptor2DOptions {
   readonly linearVelocity?: Vector2
   /** Angular velocity the body is pushed with, in radians per second; defaults to zero. */
   readonly angularVelocity?: number
+  /** Total mass of the body in kilograms, overriding the one derived from collider densities; defaults to `0`, which derives it. */
+  readonly mass?: number
+  /** Angular inertia around the origin, overriding the derived one; needs `mass`; defaults to `0`, which derives it. */
+  readonly inertia?: number
   /** Multiplier applied to the simulation gravity; defaults to `1`. */
   readonly gravityScale?: number
   /** Fraction of linear velocity removed each second; defaults to `0`. */
@@ -73,6 +77,12 @@ export class BodyDescriptor2D {
   /** Angular velocity the body is pushed with, in radians per second. */
   public readonly angularVelocity: number
 
+  /** Total mass of the body, or `0` when it derives from the collider densities. */
+  public readonly mass: number
+
+  /** Angular inertia of the body, or `0` when it derives from the collider shapes. */
+  public readonly inertia: number
+
   /** Multiplier applied to the simulation gravity. */
   public readonly gravityScale: number
 
@@ -114,6 +124,8 @@ export class BodyDescriptor2D {
     colliders = [],
     linearVelocity = new Vector2(0, 0),
     angularVelocity = 0,
+    mass = 0,
+    inertia = 0,
     gravityScale = 1,
     linearDamping = 0,
     angularDamping = 0,
@@ -125,6 +137,14 @@ export class BodyDescriptor2D {
     torque = 0,
     angularImpulse = 0,
   }: BodyDescriptor2DOptions) {
+    if (!Number.isFinite(mass) || mass < 0) {
+      throw new RangeError('Body mass must be finite and not negative.')
+    }
+
+    if (!Number.isFinite(inertia) || inertia < 0) {
+      throw new RangeError('Body inertia must be finite and not negative.')
+    }
+
     this.identifier = identifier
     this.motion = motion
     this.position = position
@@ -132,6 +152,8 @@ export class BodyDescriptor2D {
     this.colliders = Object.freeze([...colliders])
     this.linearVelocity = linearVelocity
     this.angularVelocity = angularVelocity
+    this.mass = mass
+    this.inertia = inertia
     this.gravityScale = gravityScale
     this.linearDamping = linearDamping
     this.angularDamping = angularDamping
@@ -161,6 +183,8 @@ export class BodyDescriptor2D {
       this.colliders.length !== other.colliders.length ||
       !hasEqualNumber(this.rotation, other.rotation, tolerance) ||
       !hasEqualNumber(this.angularVelocity, other.angularVelocity, tolerance) ||
+      !hasEqualNumber(this.mass, other.mass, tolerance) ||
+      !hasEqualNumber(this.inertia, other.inertia, tolerance) ||
       !hasEqualNumber(this.gravityScale, other.gravityScale, tolerance) ||
       !hasEqualNumber(this.linearDamping, other.linearDamping, tolerance) ||
       !hasEqualNumber(this.angularDamping, other.angularDamping, tolerance) ||

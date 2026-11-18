@@ -1,6 +1,7 @@
 import { type SimulationData2D, type SimulationData3D } from '../data.js'
 import { type BodyState2D } from '../descriptors/2d/state.js'
 import { type BodyState3D } from '../descriptors/3d/state.js'
+import { type ContactPoint2D, type ContactPoint3D } from '../descriptors/contact.js'
 
 import { type SimulationContext } from './context.js'
 
@@ -8,17 +9,11 @@ import { type SimulationContext } from './context.js'
  * An object that describes one or more bodies during a step.
  *
  * Simulables describe their physical representation without advancing the
- * simulation or depending on a specific backend.
+ * simulation or depending on a specific backend. The identity of each body
+ * lives in its descriptor: an object that produces the same body across steps
+ * must reuse the same identifier, which nodes take from their own identifier.
  */
 export interface Simulable2D {
-  /**
-   * Stable identifier of the object.
-   *
-   * Backends use it to keep the state of the bodies an object produces between
-   * steps, so it must not change while the object exists.
-   */
-  readonly identifier: string
-
   /**
    * Produces the simulation data for this object.
    *
@@ -35,6 +30,26 @@ export interface Simulable2D {
    * @param state - The state of a body produced by this object.
    */
   applyState?(state: BodyState2D): void
+
+  /**
+   * Receives a contact of the bodies this object produced.
+   *
+   * The space resolves both sides of the contact to the objects that produced
+   * them, so an object can react without knowing any identifier.
+   *
+   * @param contact - The contact, with the objects that own each body.
+   */
+  notifyContact?(contact: SimulableContact2D): void
+
+  /**
+   * Receives the contacts that still overlap after a step.
+   *
+   * It replaces the previous list, so an object can ask whether it is touching
+   * something without tracking enter and exit events.
+   *
+   * @param contacts - Contacts that remain touching, with their points.
+   */
+  notifyTouching?(contacts: readonly SimulableContact2D[]): void
 }
 
 /**
@@ -44,14 +59,6 @@ export interface Simulable2D {
  * simulation or depending on a specific backend.
  */
 export interface Simulable3D {
-  /**
-   * Stable identifier of the object.
-   *
-   * Backends use it to keep the state of the bodies an object produces between
-   * steps, so it must not change while the object exists.
-   */
-  readonly identifier: string
-
   /**
    * Produces the simulation data for this object.
    *
@@ -68,6 +75,72 @@ export interface Simulable3D {
    * @param state - The state of a body produced by this object.
    */
   applyState?(state: BodyState3D): void
+
+  /**
+   * Receives a contact of the bodies this object produced.
+   *
+   * The space resolves both sides of the contact to the objects that produced
+   * them, so an object can react without knowing any identifier.
+   *
+   * @param contact - The contact, with the objects that own each body.
+   */
+  notifyContact?(contact: SimulableContact3D): void
+
+  /**
+   * Receives the contacts that still overlap after a step.
+   *
+   * It replaces the previous list, so an object can ask whether it is touching
+   * something without tracking enter and exit events.
+   *
+   * @param contacts - Contacts that remain touching, with their points.
+   */
+  notifyTouching?(contacts: readonly SimulableContact3D[]): void
+}
+
+/**
+ * A contact of a two-dimensional body, resolved to the objects that own it.
+ *
+ * The space resolves both sides before publishing the contact, so scenes react
+ * with objects instead of identifiers.
+ */
+export interface SimulableContact2D {
+  /** Object that produced the body the contact belongs to. */
+  readonly owner: Simulable2D
+  /** Object that produced the other body, when the same space owns it. */
+  readonly other: Simulable2D | undefined
+  /** Identifier of the collider of the body, when it has one. */
+  readonly collider: string | undefined
+  /** Identifier of the collider of the other body, when it has one. */
+  readonly otherCollider: string | undefined
+  /** Whether the contact began during the step. */
+  readonly started: boolean
+  /** Whether both shapes still overlap after the step. */
+  readonly touching: boolean
+  /** Points of the contact, empty for sensors and for contacts that ended. */
+  readonly points: readonly ContactPoint2D[]
+}
+
+/**
+ * A contact of a three-dimensional body, resolved to the objects that own it.
+ *
+ * The space resolves both sides before publishing the contact, so scenes react
+ * with objects instead of identifiers.
+ */
+export interface SimulableContact3D {
+  /** Object that produced the body the contact belongs to. */
+  readonly owner: Simulable3D
+  /** Object that produced the other body, when the same space owns it. */
+  readonly other: Simulable3D | undefined
+  /** Identifier of the collider of the body, when it has one. */
+  readonly collider: string | undefined
+  /** Identifier of the collider of the other body, when it has one. */
+  readonly otherCollider: string | undefined
+  /** Whether the contact began during the step. */
+  readonly started: boolean
+  /** Whether both shapes still overlap after the step. */
+  readonly touching: boolean
+  /** Points of the contact, empty for sensors and for contacts that ended. */
+  readonly points: readonly ContactPoint3D[]
 }
 
 /**

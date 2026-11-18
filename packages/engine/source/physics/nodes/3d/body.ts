@@ -1,4 +1,6 @@
 import { ReactiveSet } from '#/core/collections/reactive-set.js'
+import { type ReadOnlySignal, Signal } from '#/core/events/signal.js'
+import { type ReadOnlyStore } from '#/core/events/store.js'
 import { Store } from '#/core/events/store.js'
 import { type Node } from '#/core/node/node.js'
 import { Node3D, type Node3DOptions } from '#/math/nodes/node3d.js'
@@ -9,7 +11,7 @@ import { BodyDescriptor3D } from '../../descriptors/3d/body.js'
 import { type ColliderDescriptor3D } from '../../descriptors/3d/collider.js'
 import { type BodyState3D } from '../../descriptors/3d/state.js'
 import { type SimulationContext } from '../../interfaces/context.js'
-import { type Simulable3D } from '../../interfaces/simulable.js'
+import { type Simulable3D, type SimulableContact3D } from '../../interfaces/simulable.js'
 import { MotionType } from '../../primitives/motion.js'
 
 /** Configuration for a physics body in space. */
@@ -22,6 +24,10 @@ export interface PhysicsBody3DOptions extends Node3DOptions {
   readonly linearVelocity?: Vector3
   /** Angular velocity, in radians per second; defaults to zero. */
   readonly angularVelocity?: Vector3
+  /** Total mass in kilograms; defaults to `0`, which derives it from the collider densities. */
+  readonly mass?: number
+  /** Principal angular inertia; needs mass; defaults to zero, which derives it from the shapes. */
+  readonly inertia?: Vector3
   /** Multiplier applied to the simulation gravity; defaults to `1`. */
   readonly gravityScale?: number
   /** Fraction of linear velocity removed each second; defaults to `0`. */
@@ -51,6 +57,12 @@ export class PhysicsBody3D extends Node3D implements Simulable3D {
   private _impulse: Vector3 = new Vector3(0, 0, 0)
   private _torque: Vector3 = new Vector3(0, 0, 0)
   private _angularImpulse: Vector3 = new Vector3(0, 0, 0)
+
+  private readonly _contact: Signal<[SimulableContact3D]> = new Signal<[SimulableContact3D]>()
+  private readonly _touching: Store<readonly SimulableContact3D[]> = new Store<
+    readonly SimulableContact3D[]
+  >([])
+
   private _teleportPending: boolean = false
 
   /** How the body takes part in the simulation. */
@@ -64,6 +76,12 @@ export class PhysicsBody3D extends Node3D implements Simulable3D {
 
   /** Angular velocity, in radians per second. */
   public readonly angularVelocity: Store<Vector3>
+
+  /** Total mass in kilograms, or `0` when it derives from the collider densities. */
+  public readonly mass: Store<number>
+
+  /** Principal angular inertia, or zero when it derives from the collider shapes. */
+  public readonly inertia: Store<Vector3>
 
   /** Multiplier applied to the simulation gravity. */
   public readonly gravityScale: Store<number>
@@ -83,6 +101,12 @@ export class PhysicsBody3D extends Node3D implements Simulable3D {
   /** Whether the simulation put the body to sleep. */
   public readonly sleeping: Store<boolean>
 
+  /** Fired for every contact of this body, resolved to the objects that own it. */
+  public readonly onContact: ReadOnlySignal<[SimulableContact3D]> = this._contact
+
+  /** Contacts that still overlap after the last step, with their points. */
+  public readonly touching: ReadOnlyStore<readonly SimulableContact3D[]> = this._touching
+
   /**
    * @param options - Transformation, motion, colliders and integration settings.
    */
@@ -91,6 +115,8 @@ export class PhysicsBody3D extends Node3D implements Simulable3D {
     colliders = [],
     linearVelocity = new Vector3(0, 0, 0),
     angularVelocity = new Vector3(0, 0, 0),
+    mass = 0,
+    inertia = new Vector3(0, 0, 0),
     gravityScale = 1,
     linearDamping = 0,
     angularDamping = 0,
@@ -104,6 +130,8 @@ export class PhysicsBody3D extends Node3D implements Simulable3D {
     this.colliders = new ReactiveSet(colliders)
     this.linearVelocity = new Store(linearVelocity)
     this.angularVelocity = new Store(angularVelocity)
+    this.mass = new Store(mass)
+    this.inertia = new Store(inertia)
     this.gravityScale = new Store(gravityScale)
     this.linearDamping = new Store(linearDamping)
     this.angularDamping = new Store(angularDamping)
@@ -123,6 +151,8 @@ export class PhysicsBody3D extends Node3D implements Simulable3D {
       colliders: [...this.colliders],
       linearVelocity: this.linearVelocity.value,
       angularVelocity: this.angularVelocity.value,
+      mass: this.mass.value,
+      inertia: this.inertia.value,
       gravityScale: this.gravityScale.value,
       linearDamping: this.linearDamping.value,
       angularDamping: this.angularDamping.value,
@@ -152,6 +182,38 @@ export class PhysicsBody3D extends Node3D implements Simulable3D {
     this.rotation.value = state.rotation
     this.linearVelocity.value = state.linearVelocity
     this.angularVelocity.value = state.angularVelocity
+  }
+
+  /**
+   * Fires the contact signal of this body.
+   *
+   * The simulation space calls it for every contact of the bodies this node
+   * produced, after resolving both sides to their objects.
+   *
+   * @param contact - The resolved contact.
+   */
+  public notifyContact(contact: SimulableContact3D): void {
+    if (this.destroyed) return
+    this._contact.fire(contact)
+  }
+
+  /**
+   * Replaces the contacts that still overlap after a step.
+   *
+   * @param contacts - Contacts that remain touching, with their points.
+   */
+  public notifyTouching(contacts: readonly SimulableContact3D[]): void {
+    if (this.destroyed) return
+    this._touching.value = contacts
+  }
+
+  /**
+   * Whether the body still overlaps another shape after the last step.
+   *
+   * @returns Whether any contact of this body remains touching.
+   */
+  public isTouching(): boolean {
+    return this._touching.value.length > 0
   }
 
   /**
@@ -210,6 +272,8 @@ export class PhysicsBody3D extends Node3D implements Simulable3D {
       this.motion,
       this.linearVelocity,
       this.angularVelocity,
+      this.mass,
+      this.inertia,
       this.gravityScale,
       this.linearDamping,
       this.angularDamping,
@@ -220,6 +284,9 @@ export class PhysicsBody3D extends Node3D implements Simulable3D {
     for (const store of stores) {
       if (!store.destroyed) store.destroy()
     }
+
+    if (!this._contact.destroyed) this._contact.destroy()
+    if (!this._touching.destroyed) this._touching.destroy()
   }
 
   /** @inheritDoc */

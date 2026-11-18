@@ -9,6 +9,7 @@ import {
   PhysicsBody3D,
   type RayHit3D,
   type Simulable3D,
+  type SimulableContact3D,
   SimulationBackend3D,
   SimulationData3D,
   type SimulationFrame3D,
@@ -52,17 +53,18 @@ class RecordingBackend extends SimulationBackend3D {
 }
 
 class PlainBody implements Simulable3D {
-  public readonly identifier: string
   public readonly states: BodyState3D[] = []
+  public readonly contacts: SimulableContact3D[] = []
+  private readonly _key: string
 
-  public constructor(identifier: string = 'plain') {
-    this.identifier = identifier
+  public constructor(key: string = 'plain') {
+    this._key = key
   }
 
   public simulate(): SimulationData3D {
     return new SimulationData3D([
       new BodyDescriptor3D({
-        identifier: this.identifier,
+        identifier: this._key,
         motion: MotionType.dynamic,
         position: new Vector3(0, 0, 0),
       }),
@@ -71,6 +73,10 @@ class PlainBody implements Simulable3D {
 
   public applyState(state: BodyState3D): void {
     this.states.push(state)
+  }
+
+  public notifyContact(contact: SimulableContact3D): void {
+    this.contacts.push(contact)
   }
 }
 
@@ -120,6 +126,34 @@ describe('SimulationSpace3D', () => {
     space.step(backend, 1 / 60)
 
     expect(plain.states).toEqual([state])
+    space.destroy()
+  })
+
+  it('publishes contacts resolved to the objects that own each body', () => {
+    const backend = new RecordingBackend()
+    const first = new PlainBody('first')
+    const second = new PlainBody('second')
+    const space = new SimulationSpace3D({ identifier: 'space', entries: [first, second] })
+    backend.result = {
+      states: [],
+      contacts: [
+        {
+          identifier: 'first',
+          collider: 'a',
+          other: 'second',
+          otherCollider: 'b',
+          started: true,
+          touching: true,
+          points: [],
+        },
+      ],
+    }
+
+    space.step(backend, 1 / 60)
+
+    expect(first.contacts.map((contact) => [contact.owner, contact.other])).toEqual([
+      [first, second],
+    ])
     space.destroy()
   })
 

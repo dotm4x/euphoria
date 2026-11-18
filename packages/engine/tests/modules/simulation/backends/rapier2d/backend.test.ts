@@ -8,6 +8,7 @@ import {
   PhysicsBody2D,
   RapierBackend2D,
   RevoluteJoint2D,
+  type SimulableContact2D,
   SimulationSpace2D,
   Vector2,
 } from '../../../../../source/index.js'
@@ -190,6 +191,110 @@ describe('RapierBackend2D', () => {
     expect(second.position.value.distanceTo(new Vector2(0, 0))).toBeLessThan(0.05)
     second.destroy()
     first.destroy()
+    space.destroy()
+    backend.destroy()
+  })
+
+  it('moves a heavier body less with the same impulse', async () => {
+    const backend = await RapierBackend2D.create()
+    const light = new PhysicsBody2D({
+      gravityScale: 0,
+      mass: 1,
+      position: new Vector2(0, 0),
+      colliders: [new ColliderDescriptor2D({ shape: createBoxShape2D(new Vector2(0.5, 0.5)) })],
+    })
+    const heavy = new PhysicsBody2D({
+      gravityScale: 0,
+      mass: 10,
+      position: new Vector2(0, 20),
+      colliders: [new ColliderDescriptor2D({ shape: createBoxShape2D(new Vector2(0.5, 0.5)) })],
+    })
+    const space = new SimulationSpace2D({
+      identifier: 'space',
+      gravity: new Vector2(0, 0),
+      entries: [light, heavy],
+    })
+    light.load()
+    heavy.load()
+    light.applyImpulse(new Vector2(4, 0))
+    heavy.applyImpulse(new Vector2(4, 0))
+
+    for (let step = 0; step < 10; step++) space.step(backend, 1 / 60)
+
+    expect(light.position.value.x).toBeGreaterThan(heavy.position.value.x * 5)
+    light.destroy()
+    heavy.destroy()
+    space.destroy()
+    backend.destroy()
+  })
+
+  it('spins an explicit inertia as slowly as it asks', async () => {
+    const backend = await RapierBackend2D.create()
+    const free = new PhysicsBody2D({
+      gravityScale: 0,
+      mass: 1,
+      angularDamping: 0,
+      position: new Vector2(0, 0),
+      colliders: [new ColliderDescriptor2D({ shape: createBoxShape2D(new Vector2(0.5, 0.5)) })],
+    })
+    const heavy = new PhysicsBody2D({
+      gravityScale: 0,
+      mass: 1,
+      inertia: 50,
+      angularDamping: 0,
+      position: new Vector2(0, 20),
+      colliders: [new ColliderDescriptor2D({ shape: createBoxShape2D(new Vector2(0.5, 0.5)) })],
+    })
+    const space = new SimulationSpace2D({
+      identifier: 'space',
+      gravity: new Vector2(0, 0),
+      entries: [free, heavy],
+    })
+    free.load()
+    heavy.load()
+    for (let step = 0; step < 30; step++) {
+      free.applyTorque(6)
+      heavy.applyTorque(6)
+      space.step(backend, 1 / 60)
+    }
+
+    expect(Math.abs(free.rotation.value)).toBeGreaterThan(Math.abs(heavy.rotation.value) * 3)
+    free.destroy()
+    heavy.destroy()
+    space.destroy()
+    backend.destroy()
+  })
+
+  it('reports the points, the normal and the impulse of a resting contact', async () => {
+    const backend = await RapierBackend2D.create()
+    const floor = createFloor()
+    const box = createBox(new Vector2(0, 5))
+    const space = new SimulationSpace2D({
+      identifier: 'space',
+      gravity: new Vector2(0, 9.81),
+      entries: [floor, box],
+    })
+    floor.load()
+    box.load()
+    const contacts: SimulableContact2D[] = []
+    box.onContact.connect((contact) => contacts.push(contact))
+
+    for (let step = 0; step < 120; step++) space.step(backend, 1 / 60)
+
+    const resting = box.touching.value
+    expect(resting.length).toBeGreaterThan(0)
+    expect(resting[0]?.other).toBe(floor)
+    expect(resting[0]?.touching).toBe(true)
+    const [point] = resting[0]?.points ?? []
+    expect(point).toBeDefined()
+    // The floor sits below the box, so the contact pushes the box up (-y).
+    expect(point?.normal.y).toBeLessThan(-0.9)
+    expect(point?.impulse).toBeGreaterThan(0)
+    expect(box.isTouching()).toBe(true)
+    // The sensor-free floor starts touching once, and the box reports it.
+    expect(contacts.filter((contact) => contact.started)).toHaveLength(1)
+    box.destroy()
+    floor.destroy()
     space.destroy()
     backend.destroy()
   })

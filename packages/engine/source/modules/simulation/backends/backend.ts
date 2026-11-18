@@ -8,7 +8,7 @@ import { type BodyState2D } from '#/physics/descriptors/2d/state.js'
 import { type BodyDescriptor3D } from '#/physics/descriptors/3d/body.js'
 import { type JointDescriptor3D } from '#/physics/descriptors/3d/joint.js'
 import { type BodyState3D } from '#/physics/descriptors/3d/state.js'
-import { type BodyContact } from '#/physics/descriptors/contact.js'
+import { type BodyContact2D, type BodyContact3D } from '#/physics/descriptors/contact.js'
 import { type RayHit2D, type RayHit3D, type RayQueryOptions } from '#/physics/interfaces/ray.js'
 import { type Dimension } from '#/physics/primitives/dimension.js'
 
@@ -48,16 +48,16 @@ export interface SimulationFrame3D {
 export interface SimulationResult2D {
   /** Resolved states of the bodies the simulation moved. */
   readonly states: readonly BodyState2D[]
-  /** Contacts reported during the steps. */
-  readonly contacts: readonly BodyContact[]
+  /** Contacts reported during the steps, with their points. */
+  readonly contacts: readonly BodyContact2D[]
 }
 
 /** The outcome of the steps executed for a three-dimensional space. */
 export interface SimulationResult3D {
   /** Resolved states of the bodies the simulation moved. */
   readonly states: readonly BodyState3D[]
-  /** Contacts reported during the steps. */
-  readonly contacts: readonly BodyContact[]
+  /** Contacts reported during the steps, with their points. */
+  readonly contacts: readonly BodyContact3D[]
 }
 
 /**

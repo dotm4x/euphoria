@@ -253,3 +253,56 @@ function shapeDescription(rapier: typeof Rapier, shape: Shape3D): Rapier.Collide
 
   throw new Error('Unsupported shape kind.')
 }
+
+/**
+ * Applies the mass distribution of a descriptor to a body that already owns its
+ * colliders.
+ *
+ * An explicit mass scales the collider densities, so the shapes still provide a
+ * consistent inertia. An explicit inertia replaces both, so the colliders stop
+ * contributing mass.
+ *
+ * @param body - Body whose colliders exist.
+ * @param descriptor - Descriptor that carries the requested mass and inertia.
+ * @throws {@link Error} If an inertia is requested without a mass.
+ */
+export function applyMassProperties(body: Rapier.RigidBody, descriptor: BodyDescriptor3D): void {
+  const { x, y, z } = descriptor.inertia
+  const explicitInertia = x > 0 || y > 0 || z > 0
+  if (descriptor.mass <= 0) {
+    if (explicitInertia) {
+      throw new Error('An explicit inertia requires an explicit body mass.')
+    }
+
+    return
+  }
+
+  if (explicitInertia) {
+    for (let index = 0; index < body.numColliders(); index++) {
+      body.collider(index).setDensity(0)
+    }
+
+    body.setAdditionalMassProperties(
+      descriptor.mass,
+      { x: 0, y: 0, z: 0 },
+      { x, y, z },
+      identityRotation(),
+      true,
+    )
+    return
+  }
+
+  let total = 0
+  for (let index = 0; index < body.numColliders(); index++) {
+    total += body.collider(index).mass()
+  }
+
+  if (total <= 0) return
+  const factor = descriptor.mass / total
+  for (let index = 0; index < body.numColliders(); index++) {
+    const collider = body.collider(index)
+    collider.setDensity(collider.density() * factor)
+  }
+
+  body.recomputeMassPropertiesFromColliders()
+}

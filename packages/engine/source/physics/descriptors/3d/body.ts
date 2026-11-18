@@ -20,6 +20,10 @@ export interface BodyDescriptor3DOptions {
   readonly linearVelocity?: Vector3
   /** Angular velocity the body is pushed with, in radians per second; defaults to zero. */
   readonly angularVelocity?: Vector3
+  /** Total mass of the body in kilograms, overriding the one derived from collider densities; defaults to `0`, which derives it. */
+  readonly mass?: number
+  /** Principal angular inertia, overriding the derived one; needs `mass`; defaults to zero, which derives it. */
+  readonly inertia?: Vector3
   /** Multiplier applied to the simulation gravity; defaults to `1`. */
   readonly gravityScale?: number
   /** Fraction of linear velocity removed each second; defaults to `0`. */
@@ -73,6 +77,12 @@ export class BodyDescriptor3D {
   /** Angular velocity the body is pushed with, in radians per second. */
   public readonly angularVelocity: Vector3
 
+  /** Total mass of the body, or `0` when it derives from the collider densities. */
+  public readonly mass: number
+
+  /** Principal angular inertia of the body, or zero when it derives from the collider shapes. */
+  public readonly inertia: Vector3
+
   /** Multiplier applied to the simulation gravity. */
   public readonly gravityScale: number
 
@@ -114,6 +124,8 @@ export class BodyDescriptor3D {
     colliders = [],
     linearVelocity = new Vector3(0, 0, 0),
     angularVelocity = new Vector3(0, 0, 0),
+    mass = 0,
+    inertia = new Vector3(0, 0, 0),
     gravityScale = 1,
     linearDamping = 0,
     angularDamping = 0,
@@ -125,6 +137,10 @@ export class BodyDescriptor3D {
     torque = new Vector3(0, 0, 0),
     angularImpulse = new Vector3(0, 0, 0),
   }: BodyDescriptor3DOptions) {
+    if (!Number.isFinite(mass) || mass < 0) {
+      throw new RangeError('Body mass must be finite and not negative.')
+    }
+
     this.identifier = identifier
     this.motion = motion
     this.position = position
@@ -132,6 +148,8 @@ export class BodyDescriptor3D {
     this.colliders = Object.freeze([...colliders])
     this.linearVelocity = linearVelocity
     this.angularVelocity = angularVelocity
+    this.mass = mass
+    this.inertia = inertia
     this.gravityScale = gravityScale
     this.linearDamping = linearDamping
     this.angularDamping = angularDamping
@@ -159,6 +177,8 @@ export class BodyDescriptor3D {
       this.sleepAllowed !== other.sleepAllowed ||
       this.teleport !== other.teleport ||
       this.colliders.length !== other.colliders.length ||
+      !hasEqualNumber(this.mass, other.mass, tolerance) ||
+      !this.inertia.equals(other.inertia, tolerance) ||
       !hasEqualNumber(this.gravityScale, other.gravityScale, tolerance) ||
       !hasEqualNumber(this.linearDamping, other.linearDamping, tolerance) ||
       !hasEqualNumber(this.angularDamping, other.angularDamping, tolerance)

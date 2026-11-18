@@ -6,6 +6,7 @@ import {
   MotionType,
   Node3D,
   PhysicsBody3D,
+  type SimulableContact3D,
   type SimulationContext,
   Vector3,
 } from '../../../../source/index.js'
@@ -87,6 +88,41 @@ describe('PhysicsBody3D', () => {
     expect(dynamic.simulate(context).bodies[0]?.teleport).toBe(false)
     fixed.destroy()
     dynamic.destroy()
+  })
+
+  it('fires its contact signal when the simulation resolves a contact', () => {
+    const body = new PhysicsBody3D()
+    const other = new PhysicsBody3D()
+    body.load()
+    other.load()
+    const seen: SimulableContact3D[] = []
+    body.onContact.connect((contact) => seen.push(contact))
+
+    body.notifyContact({
+      owner: body,
+      other,
+      collider: 'shape',
+      otherCollider: undefined,
+      started: true,
+      touching: true,
+      points: [],
+    })
+    body.destroy()
+    body.notifyContact({
+      owner: body,
+      other,
+      collider: 'shape',
+      otherCollider: undefined,
+      started: false,
+      touching: false,
+      points: [],
+    })
+
+    expect(seen).toHaveLength(1)
+    expect(seen[0]?.other).toBe(other)
+    expect(seen[0]?.collider).toBe('shape')
+    expect(seen[0]?.started).toBe(true)
+    other.destroy()
   })
 
   it('rejects being placed inside a node that transforms space', () => {

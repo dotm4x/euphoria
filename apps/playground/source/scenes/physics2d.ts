@@ -180,16 +180,17 @@ export class PhysicsScene extends Node {
   public attach(space: SimulationSpace): void {
     if (!(space instanceof SimulationSpace2D)) return
     this._space = space
-    space.onContact.connect((contact) => {
-      if (!this.loaded || !contact.started) return
-      if (contact.identifier !== this.gate.identifier) return
-      this._hits++
-    })
   }
 
   /** @inheritDoc */
   protected override configure(): void {
     const { keyboard, mouse } = this.require(PlaygroundInputModule)
+    // The gate is a sensor, so it only reports: each body that crosses it arrives
+    // here already resolved, without touching identifiers.
+    this.gate.onContact.connect(({ started, other }) => {
+      if (!started || other === undefined) return
+      this._hits++
+    })
     keyboard.debug.connect(({ down }) => {
       if (!down || !this.loaded) return
       this._outlinesVisible = !this._outlinesVisible

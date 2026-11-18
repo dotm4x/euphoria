@@ -22,6 +22,7 @@ export function toRigidBodyDesc(
   descriptor: BodyDescriptor2D,
 ): Rapier.RigidBodyDesc {
   const description = motionDescription(rapier, descriptor.motion)
+
   description.setTranslation(descriptor.position.x, descriptor.position.y)
   description.setRotation(descriptor.rotation)
   description.setLinearDamping(descriptor.linearDamping)
@@ -188,4 +189,51 @@ export function toJointData(
   }
 
   throw new Error('Unsupported joint type.')
+}
+
+/**
+ * Applies the mass distribution of a descriptor to a body that already owns its
+ * colliders.
+ *
+ * An explicit mass scales the collider densities, so the shapes still provide a
+ * consistent inertia. An explicit inertia replaces both, so the colliders stop
+ * contributing mass.
+ *
+ * @param body - Body whose colliders exist.
+ * @param descriptor - Descriptor that carries the requested mass and inertia.
+ * @throws {@link Error} If an inertia is requested without a mass.
+ */
+export function applyMassProperties(body: Rapier.RigidBody, descriptor: BodyDescriptor2D): void {
+  if (descriptor.mass <= 0) {
+    if (descriptor.inertia > 0) {
+      throw new Error('An explicit inertia requires an explicit body mass.')
+    }
+
+    return
+  }
+
+  if (descriptor.inertia > 0) {
+    for (let index = 0; index < body.numColliders(); index++) {
+      body.collider(index).setDensity(0)
+    }
+
+    // The body adds these properties to its colliders at the next step, so the
+    // colliders must not contribute and the properties must not be recomputed here.
+    body.setAdditionalMassProperties(descriptor.mass, { x: 0, y: 0 }, descriptor.inertia, true)
+    return
+  }
+
+  let total = 0
+  for (let index = 0; index < body.numColliders(); index++) {
+    total += body.collider(index).mass()
+  }
+
+  if (total <= 0) return
+  const factor = descriptor.mass / total
+  for (let index = 0; index < body.numColliders(); index++) {
+    const collider = body.collider(index)
+    collider.setDensity(collider.density() * factor)
+  }
+
+  body.recomputeMassPropertiesFromColliders()
 }
