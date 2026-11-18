@@ -1,4 +1,6 @@
 export * from './importer.js'
 export * from './importers/index.js'
+export * from './manifest.js'
 export * from './module.js'
+export * from './progress.js'
 export * from './watcher.js'

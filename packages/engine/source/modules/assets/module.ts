@@ -1,9 +1,18 @@
 import { type EventConnection } from '#/core/events/event.js'
+import { Store } from '#/core/events/store.js'
 import { Module, ModuleState } from '#/core/module.js'
 import { Once } from '#/core/primitives/once.js'
 
 import { type AssetImporter } from './importer.js'
 import { Asset, replaceAssetValue } from './importers/resources/asset.js'
+import { type AssetManifest } from './manifest.js'
+import {
+  type AssetLoadReport,
+  AssetLoadState,
+  type AssetProgress,
+  type AssetProgressEntry,
+  assetProgressOf,
+} from './progress.js'
 import { SourceWatcher } from './watcher.js'
 
 /** Options for loading an asset. */
@@ -112,6 +121,62 @@ export class AssetsModule extends Module {
     const extensions = new Set(this._extensions.keys())
     this.validateImporter(importer, identifiers, extensions)
     this.attachImporter(importer)
+  }
+
+  /**
+   * Loads every asset of a manifest and reports the progress of the whole set.
+   *
+   * Assets load in parallel and each one is accounted for, so a loading screen
+   * can show how many are ready, which one is in flight and which failed with
+   * the message the importer produced. The load never rejects: a failed asset is
+   * reported as failed, so the screen decides whether that is fatal.
+   *
+   * @param manifest - Manifest that groups the assets.
+   * @returns The observable progress and the promise that settles when every
+   * asset is ready or failed.
+   * @throws {@link Error} If the module has been destroyed.
+   */
+  public loadAll(manifest: AssetManifest): AssetLoadReport {
+    this.throwIfDestroyed()
+    const states = new Map<string, AssetProgressEntry>(
+      manifest.entries.map((entry) => {
+        const key = entry.key ?? entry.source
+
+        return [key, { key, source: entry.source, state: AssetLoadState.pending }]
+      }),
+    )
+    const progress = new Store<AssetProgress>(assetProgressOf(manifest.name, [...states.values()]))
+    const publish = (key: string, state: AssetLoadState, error?: string): void => {
+      const previous = states.get(key)
+      if (previous === undefined) return
+      states.set(key, {
+        key,
+        source: previous.source,
+        state,
+        ...(error === undefined ? {} : { error }),
+      })
+      progress.value = assetProgressOf(manifest.name, [...states.values()])
+    }
+
+    const finished = Promise.all(
+      manifest.entries.map(async (entry) => {
+        const key = entry.key ?? entry.source
+        publish(key, AssetLoadState.loading)
+        try {
+          await this.load(entry.source, {
+            key,
+            ...(entry.type === undefined ? {} : { type: entry.type }),
+          })
+          publish(key, AssetLoadState.loaded)
+        } catch (error) {
+          publish(key, AssetLoadState.failed, messageOf(error))
+        }
+
+        return currentEntry(states, key)
+      }),
+    )
+
+    return { progress, finished }
   }
 
   /**
@@ -399,4 +464,28 @@ function extensionOf(source: string): string | undefined {
   const index = name.lastIndexOf('.')
 
   return index <= 0 ? undefined : name.slice(index).toLowerCase()
+}
+
+/**
+ * Describes a failure the way a loading screen shows it.
+ *
+ * @param error - Value thrown by a load.
+ * @returns The message of the error, or its text form.
+ */
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+/**
+ * Reads the entry a load published last.
+ *
+ * @param states - Entries of the load.
+ * @param key - Key of the asset.
+ * @returns The entry, or a failed one when the key vanished.
+ */
+function currentEntry(
+  states: ReadonlyMap<string, AssetProgressEntry>,
+  key: string,
+): AssetProgressEntry {
+  return states.get(key) ?? { key, source: key, state: AssetLoadState.failed }
 }
