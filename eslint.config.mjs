@@ -53,6 +53,7 @@ export default defineConfig(
       '**/dist/**',
       '**/coverage/**',
       '**/build/**',
+      '**/storybook-static/**',
       '**/.pnpm-store/**',
       '**/*.generated.*',
     ],
