@@ -56,3 +56,18 @@ async function decodeImage(blob: Blob): Promise<Image> {
     bitmap.close()
   }
 }
+
+/**
+ * Decodes encoded image bytes into pixels.
+ *
+ * Exposed so importers that carry images inside another file, such as a glTF
+ * buffer, decode them the same way this importer decodes a source of its own.
+ *
+ * @param data - Encoded bytes of the image.
+ * @param type - Media type of the bytes, such as `image/png`.
+ * @returns The decoded image.
+ * @throws {@link Error} If the bytes are not an image the browser can decode.
+ */
+export async function decodeImageBytes(data: ArrayBuffer, type: string): Promise<Image> {
+  return decodeImage(new Blob([data], { type }))
+}
