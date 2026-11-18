@@ -1,4 +1,3 @@
-export * from './audio.js'
 export * from './binary.js'
 export * from './json.js'
 export * from './resources/index.js'

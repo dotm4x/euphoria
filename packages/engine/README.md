@@ -19,8 +19,11 @@ project can grow without switching tools or rewriting its foundation.
   layers, effects and viewports are all nodes you can combine.
 - **One asset pipeline** — Images, audio, shaders, text and binary data load,
   cache and reload through a common system.
-- **Built for real games** — Input, timing, scenes, rendering and asset management
-  ship together, with the same code in development and in production.
+- **Built for real games** — Input, timing, scenes, rendering, audio and asset
+  management ship together, with the same code in development and in production.
+- **Sound that follows the scene** — Music, interface sounds and placed emitters
+  inherit the transform of the node they hang from, mix through buses and fade
+  with the distance to the camera.
 - **Open and embeddable** — Apache 2.0 licensed, ready to be used on its own or
   integrated into your own projects.
 
@@ -34,6 +37,10 @@ project can grow without switching tools or rewriting its foundation.
 >
 > Physics runs through the simulation module in two and three dimensions, with
 > bodies, colliders, sensors, joints, contacts and ray casts resolved by Rapier.
+>
+> Audio plays through the playback module over the Web Audio API, with placed
+> planar and spatial emitters, mixing buses and a null backend for servers and
+> tests.
 >
 > More information will be added as the engine progresses.
 
