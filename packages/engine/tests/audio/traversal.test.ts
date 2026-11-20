@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 
 import {
   AudioClip,
-  AudioEmitter3D,
-  AudioListener3D,
+  AudioEmitter2D,
+  AudioListener2D,
   AudioPlayer,
   Node,
 } from '../../source/index.js'
@@ -14,7 +14,7 @@ describe('collectNodeSound', () => {
   it('collects the sound sources of a loaded scene in hierarchy order', async () => {
     const { collectNodeSound } = await import('../../source/index.js')
     const player = new AudioPlayer({ clip })
-    const emitter = new AudioEmitter3D({ clip })
+    const emitter = new AudioEmitter2D({ clip })
     const scene = new Node({ name: 'scene', children: [player, emitter] })
     scene.load()
     const collected: unknown[] = []
@@ -28,7 +28,7 @@ describe('collectNodeSound', () => {
 
   it('finds the first listener of the scene', async () => {
     const { collectNodeSound } = await import('../../source/index.js')
-    const camera = new AudioListener3D({ name: 'camera' })
+    const camera = new AudioListener2D({ name: 'camera' })
     const scene = new Node({ name: 'scene', children: [new Node(), camera] })
     scene.load()
 

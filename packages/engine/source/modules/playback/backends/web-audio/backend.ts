@@ -4,11 +4,10 @@ import {
   type PlaybackStats,
   type VoiceState,
 } from '#/audio/descriptors/frame.js'
-import { type ListenerDescriptor } from '#/audio/descriptors/listener.js'
 import { type PlaybackDescriptor } from '#/audio/descriptors/playback.js'
 import { Attenuation } from '#/audio/primitives/attenuation.js'
 import { AudioSpace } from '#/audio/primitives/space.js'
-import { panFor, planarDistance, spatialDistance } from '#/audio/primitives/spatial.js'
+import { panFor, planarDistance } from '#/audio/primitives/spatial.js'
 import { type AudioClip } from '#/audio/resources/clip.js'
 import { type ReadOnlyStore, Store } from '#/core/events/store.js'
 
@@ -122,7 +121,6 @@ export class WebAudioBackend extends AudioBackend {
     if (master === undefined) return
 
     master.gain.value = frame.muted ? 0 : frame.masterVolume
-    this.placeListener(frame.listener)
     this.syncBuses(frame, master)
 
     const active = new Set<string>()
@@ -288,10 +286,7 @@ export class WebAudioBackend extends AudioBackend {
     if (master === undefined) return
 
     const listener = frame.listener
-    const distance =
-      descriptor.space === AudioSpace.planar
-        ? planarDistance(descriptor.position, listener.position)
-        : spatialDistance(descriptor.position, listener.position)
+    const distance = planarDistance(descriptor.position, listener.position)
     const curve = descriptor.attenuation ?? defaultAttenuation
     const attenuation = descriptor.space === AudioSpace.none ? 1 : curve.gainAt(distance)
 
@@ -316,71 +311,15 @@ export class WebAudioBackend extends AudioBackend {
     this.place(voice.panner, descriptor, frame)
   }
 
-  private placeListener(listener: ListenerDescriptor): void {
-    const context = this.context
-    const ears = context.listener as unknown as PositionedAudio
-    const { position, forward, up } = listener
-    const time = context.currentTime
-    if (hasEarParams(ears)) {
-      ears.positionX.setValueAtTime(position.x, time)
-      ears.positionY.setValueAtTime(position.y, time)
-      ears.positionZ.setValueAtTime(position.z, time)
-      ears.forwardX.setValueAtTime(forward.x, time)
-      ears.forwardY.setValueAtTime(forward.y, time)
-      ears.forwardZ.setValueAtTime(forward.z, time)
-      ears.upX.setValueAtTime(up.x, time)
-      ears.upY.setValueAtTime(up.y, time)
-      ears.upZ.setValueAtTime(up.z, time)
-
-      return
-    }
-
-    // Browsers without audio params, such as Firefox and older Safari, only
-    // offer the deprecated setters.
-    ears.setPosition?.(position.x, position.y, position.z)
-    ears.setOrientation?.(forward.x, forward.y, forward.z, up.x, up.y, up.z)
-  }
-
   private place(panner: AudioNode, descriptor: PlaybackDescriptor, frame: PlaybackFrame): void {
-    if (descriptor.space === AudioSpace.planar && 'pan' in panner) {
-      const listener = frame.listener
-      const pan = panFor(descriptor.position, listener.position, listener.forward, listener.up)
-      ;(panner as StereoPannerNode).pan.value = pan
-      return
-    }
-
-    const node = panner as unknown as PositionedAudio
-    const { position, forward } = descriptor
-    const time = this.context.currentTime
-    if (hasSourceParams(node)) {
-      node.positionX.setValueAtTime(position.x, time)
-      node.positionY.setValueAtTime(position.y, time)
-      node.positionZ.setValueAtTime(position.z, time)
-      node.orientationX.setValueAtTime(forward.x, time)
-      node.orientationY.setValueAtTime(forward.y, time)
-      node.orientationZ.setValueAtTime(forward.z, time)
-
-      return
-    }
-
-    node.setPosition?.(position.x, position.y, position.z)
-    node.setOrientation?.(forward.x, forward.y, forward.z)
+    if (descriptor.space !== AudioSpace.planar || !('pan' in panner)) return
+    const listener = frame.listener
+    const pan = panFor(descriptor.position, listener.position, listener.forward, listener.up)
+    ;(panner as StereoPannerNode).pan.value = pan
   }
 
   private createPanner(space: AudioSpace): AudioNode | undefined {
     const context = this.context
-    if (space === AudioSpace.spatial) {
-      const panner = context.createPanner()
-      // Distance is applied by the gain node, so the panner only places the voice.
-      panner.panningModel = 'HRTF'
-      panner.distanceModel = 'linear'
-      panner.refDistance = 1
-      panner.maxDistance = 10000
-      panner.rolloffFactor = 0
-
-      return panner
-    }
-
     if (space === AudioSpace.planar && typeof context.createStereoPanner === 'function') {
       return context.createStereoPanner()
     }
@@ -423,72 +362,4 @@ function needsRestart(voice: BrowserVoice, descriptor: PlaybackDescriptor): bool
     voice.loop !== descriptor.loop ||
     voice.offset !== descriptor.offset
   )
-}
-
-/** Position and orientation of a listener or a panner, in both API shapes. */
-interface PositionedAudio {
-  readonly positionX?: AudioParam
-  readonly positionY?: AudioParam
-  readonly positionZ?: AudioParam
-  readonly orientationX?: AudioParam
-  readonly orientationY?: AudioParam
-  readonly orientationZ?: AudioParam
-  readonly forwardX?: AudioParam
-  readonly forwardY?: AudioParam
-  readonly forwardZ?: AudioParam
-  readonly upX?: AudioParam
-  readonly upY?: AudioParam
-  readonly upZ?: AudioParam
-  setPosition?: (x: number, y: number, z: number) => void
-  setOrientation?: (
-    forwardX: number,
-    forwardY: number,
-    forwardZ: number,
-    upX?: number,
-    upY?: number,
-    upZ?: number,
-  ) => void
-}
-
-/**
- * Whether a listener exposes the audio param API for its position and facing.
- *
- * @param target - Listener to inspect.
- * @returns Whether the params are available.
- */
-function hasEarParams(target: PositionedAudio): target is EarParams {
-  return target.positionX !== undefined && target.forwardX !== undefined && target.upX !== undefined
-}
-
-/**
- * Whether a panner exposes the audio param API for its position and facing.
- *
- * @param target - Panner to inspect.
- * @returns Whether the params are available.
- */
-function hasSourceParams(target: PositionedAudio): target is SourceParams {
-  return target.positionX !== undefined && target.orientationX !== undefined
-}
-
-/** Parameters of a listener, as browsers that implement the modern API expose them. */
-interface EarParams {
-  readonly positionX: AudioParam
-  readonly positionY: AudioParam
-  readonly positionZ: AudioParam
-  readonly forwardX: AudioParam
-  readonly forwardY: AudioParam
-  readonly forwardZ: AudioParam
-  readonly upX: AudioParam
-  readonly upY: AudioParam
-  readonly upZ: AudioParam
-}
-
-/** Parameters of a panner, as browsers that implement the modern API expose them. */
-interface SourceParams {
-  readonly positionX: AudioParam
-  readonly positionY: AudioParam
-  readonly positionZ: AudioParam
-  readonly orientationX: AudioParam
-  readonly orientationY: AudioParam
-  readonly orientationZ: AudioParam
 }

@@ -1,7 +1,5 @@
 import {
-  Dimension,
   SceneSimulationSpace2D,
-  SceneSimulationSpace3D,
   type SimulationBackend,
   SimulationModule,
   type SimulationSpaceBinding,
@@ -44,11 +42,7 @@ export class PlaygroundSimulationModule extends SimulationModule {
 
   protected override *compose(): Generator<SimulationSpaceBinding, void, unknown> {
     for (const backend of this._physics) {
-      yield {
-        space:
-          backend.dimension === Dimension.twoDimensional ? this.planarSpace() : this.spatialSpace(),
-        backend,
-      }
+      yield { space: this.planarSpace(), backend }
     }
   }
 
@@ -57,16 +51,6 @@ export class PlaygroundSimulationModule extends SimulationModule {
 
     return new SceneSimulationSpace2D({
       identifier: 'scene-2d',
-      scenes: this.require(PlaygroundScenesModule),
-      ...(joints === undefined ? {} : { joints }),
-    })
-  }
-
-  private spatialSpace(): SceneSimulationSpace3D {
-    const joints = this._scene.joints3D
-
-    return new SceneSimulationSpace3D({
-      identifier: 'scene-3d',
       scenes: this.require(PlaygroundScenesModule),
       ...(joints === undefined ? {} : { joints }),
     })

@@ -58,14 +58,4 @@ describe('RenderTarget', () => {
     expect(target.mipmaps).toBe(true)
     target.destroy()
   })
-
-  it('requests a depth buffer only when asked', () => {
-    const plain = new RenderTarget(new Vector2(32, 16))
-    const depth = new RenderTarget(new Vector2(32, 16), { depth: true })
-
-    expect(plain.depth).toBe(false)
-    expect(depth.depth).toBe(true)
-    plain.destroy()
-    depth.destroy()
-  })
 })

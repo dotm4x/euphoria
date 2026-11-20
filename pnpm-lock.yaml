@@ -242,9 +242,6 @@ importers:
       '@dimforge/rapier2d-compat':
         specifier: ^0.21.0
         version: 0.21.0
-      '@dimforge/rapier3d-compat':
-        specifier: ^0.21.0
-        version: 0.21.0
     devDependencies:
       tsc-alias:
         specifier: ^1.9.10
@@ -363,9 +360,6 @@ packages:
 
   '@dimforge/rapier2d-compat@0.21.0':
     resolution: {integrity: sha512-cMStLQZbY5D/ajAPjOwTwoYuAJAungTYB45MNFEa5B+LGaMiZfxLwjHsfpxH5B0sDa+gkmcQFJJKiHNKnlpMnA==}
-
-  '@dimforge/rapier3d-compat@0.21.0':
-    resolution: {integrity: sha512-tCl1HPGwOhn5aCQbgqWbOH+Nx/5fnr3IPAnzQuR7zIhC/raqi2yxC6LhvZqjdI2El5hQgY5RDAwDrAjAi2FdPA==}
 
   '@emnapi/core@1.11.0':
     resolution: {integrity: sha512-l9Oo58x0HOP5znGzVhYW9U3e5wVuA4LAZU2AGezTmkhO1CgQRFDhDg4nneHsu/t3WniXg9QrG2nIXL/ZS8ln8Q==}
@@ -2520,8 +2514,6 @@ snapshots:
   '@conventional-changelog/template@1.4.1': {}
 
   '@dimforge/rapier2d-compat@0.21.0': {}
-
-  '@dimforge/rapier3d-compat@0.21.0': {}
 
   '@emnapi/core@1.11.0':
     dependencies:

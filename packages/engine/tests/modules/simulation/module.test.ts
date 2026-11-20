@@ -11,7 +11,6 @@ import {
   SimulationPriority,
   type SimulationResult2D,
   SimulationSpace2D,
-  SimulationSpace3D,
   type SimulationSpaceBinding,
   type SimulationStats,
 } from '../../../source/index.js'
@@ -124,17 +123,6 @@ describe('SimulationModule', () => {
     expect(planar.events).toHaveLength(3)
     expect(other.events).toHaveLength(3)
     module.destroy()
-  })
-
-  it('rejects a space bound to a backend of another dimensionality', () => {
-    const backend = new RecordingBackend()
-
-    expect(
-      () =>
-        new SimulationModule({
-          spaces: [{ space: new SimulationSpace3D({ identifier: 'spatial' }), backend }],
-        }),
-    ).toThrow(/dimensionality/)
   })
 
   it('registers and returns spaces and backends to their owner', () => {

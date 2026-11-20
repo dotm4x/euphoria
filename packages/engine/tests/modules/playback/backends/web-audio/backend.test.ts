@@ -59,72 +59,15 @@ class FakeSource extends FakeNode {
   }
 }
 
-/** Panner that can emulate a browser without the audio param API. */
-class FakePanner extends FakeNode {
-  public readonly positionX: FakeParam = new FakeParam()
-  public readonly positionY: FakeParam = new FakeParam()
-  public readonly positionZ: FakeParam = new FakeParam()
-  public readonly orientationX: FakeParam = new FakeParam()
-  public readonly orientationY: FakeParam = new FakeParam()
-  public readonly orientationZ: FakeParam = new FakeParam()
-  public readonly placed: number[][] = []
-  public readonly oriented: number[][] = []
-  public panningModel: string = ''
-  public distanceModel: string = ''
-  public refDistance: number = 0
-  public maxDistance: number = 0
-  public rolloffFactor: number = 1
-
-  public setPosition(x: number, y: number, z: number): void {
-    this.placed.push([x, y, z])
-  }
-
-  public setOrientation(x: number, y: number, z: number): void {
-    this.oriented.push([x, y, z])
-  }
-}
-
 class FakeStereoPanner extends FakeNode {
   public readonly pan: FakeParam = new FakeParam()
-}
-
-/** Listener that can emulate a browser without the audio param API. */
-class FakeListener {
-  public readonly positionX: FakeParam = new FakeParam()
-  public readonly positionY: FakeParam = new FakeParam()
-  public readonly positionZ: FakeParam = new FakeParam()
-  public readonly forwardX: FakeParam = new FakeParam()
-  public readonly forwardY: FakeParam = new FakeParam()
-  public readonly forwardZ: FakeParam = new FakeParam()
-  public readonly upX: FakeParam = new FakeParam()
-  public readonly upY: FakeParam = new FakeParam()
-  public readonly upZ: FakeParam = new FakeParam()
-  public readonly placed: number[][] = []
-  public readonly oriented: number[][] = []
-
-  public setPosition(x: number, y: number, z: number): void {
-    this.placed.push([x, y, z])
-  }
-
-  public setOrientation(
-    fx: number,
-    fy: number,
-    fz: number,
-    ux: number,
-    uy: number,
-    uz: number,
-  ): void {
-    this.oriented.push([fx, fy, fz, ux, uy, uz])
-  }
 }
 
 class FakeContext {
   public currentTime: number = 0
   public state: 'suspended' | 'running' | 'closed' = 'suspended'
-  public readonly listener: FakeListener = new FakeListener()
   public readonly destination: FakeNode = new FakeNode()
   public readonly sources: FakeSource[] = []
-  public readonly panners: FakePanner[] = []
   public readonly pans: FakeStereoPanner[] = []
   public readonly gains: FakeGain[] = []
   public decodeCount: number = 0
@@ -142,13 +85,6 @@ class FakeContext {
     this.sources.push(source)
 
     return source
-  }
-
-  public createPanner(): FakePanner {
-    const panner = new FakePanner()
-    this.panners.push(panner)
-
-    return panner
   }
 
   public createStereoPanner(): FakeStereoPanner {
@@ -267,8 +203,8 @@ describe('WebAudioBackend', () => {
     backend.sync(
       frame([
         voice({
-          space: AudioSpace.spatial,
-          position: new Vector3(0, 0, 5),
+          space: AudioSpace.planar,
+          position: new Vector3(5, 0, 0),
           attenuation,
         }),
       ]),
@@ -285,63 +221,6 @@ describe('WebAudioBackend', () => {
     backend.sync(frame([voice({ space: AudioSpace.planar, position: new Vector3(4, 0, 0) })]))
 
     expect(context.pans[0]?.pan.value).toBeCloseTo(1)
-    backend.destroy()
-  })
-
-  it('places a spatial voice and the listener with the audio param API', async () => {
-    const { backend, context } = createBackend()
-    await backend.decode(clip)
-
-    backend.sync(frame([voice({ space: AudioSpace.spatial, position: new Vector3(1, 2, 3) })]))
-
-    expect(context.listener.positionX.values).toEqual([0])
-    expect(context.panners[0]?.positionX.values).toEqual([1])
-    expect(context.panners[0]?.positionY.values).toEqual([2])
-    expect(context.panners[0]?.positionZ.values).toEqual([3])
-    backend.destroy()
-  })
-
-  it('falls back to the deprecated setters when a browser has no params', async () => {
-    const context = new FakeContext()
-    const legacyListener = new FakeListener()
-    Object.assign(context, {
-      listener: Object.assign(legacyListener, {
-        positionX: undefined,
-        positionY: undefined,
-        positionZ: undefined,
-        forwardX: undefined,
-        forwardY: undefined,
-        forwardZ: undefined,
-        upX: undefined,
-        upY: undefined,
-        upZ: undefined,
-      }),
-    })
-    const backend = new WebAudioBackend({ context: context as unknown as AudioContext })
-    await backend.decode(clip)
-    const panner = backend
-
-    const realCreatePanner = context.createPanner.bind(context)
-    context.createPanner = () => {
-      const created = realCreatePanner()
-      Object.assign(created, {
-        positionX: undefined,
-        positionY: undefined,
-        positionZ: undefined,
-        orientationX: undefined,
-        orientationY: undefined,
-        orientationZ: undefined,
-      })
-
-      return created
-    }
-
-    expect(() => {
-      panner.sync(frame([voice({ space: AudioSpace.spatial, position: new Vector3(1, 2, 3) })]))
-    }).not.toThrow()
-    expect(legacyListener.placed).toEqual([[0, 0, 0]])
-    expect(context.panners[0]?.placed).toEqual([[1, 2, 3]])
-    expect(context.sources).toHaveLength(1)
     backend.destroy()
   })
 

@@ -17,8 +17,7 @@ export interface AudioPlayerOptions extends AudioVoiceOptions, NodeOptions {}
  * A sound that is heard everywhere at once, with no distance or panning.
  *
  * Music, interface sounds and voice-over use it. The node carries the state and
- * the playback module does the rest, so a player sounds the same whether the
- * game draws in two or three dimensions.
+ * the playback module does the rest.
  */
 export class AudioPlayer extends Node implements Playable {
   private readonly _voice: AudioVoice

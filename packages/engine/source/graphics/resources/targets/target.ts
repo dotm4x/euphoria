@@ -20,8 +20,6 @@ export interface RenderTargetOptions {
   readonly format?: RenderTargetFormat
   /** Whether mipmaps are generated when the target is sampled. Defaults to false. */
   readonly mipmaps?: boolean
-  /** Whether the target receives a depth buffer for three-dimensional drawing. Defaults to false. */
-  readonly depth?: boolean
 }
 
 /**
@@ -36,7 +34,6 @@ export class RenderTarget extends Texture {
   private readonly _sampleCount: number
   private readonly _format: RenderTargetFormat
   private readonly _mipmaps: boolean
-  private readonly _depth: boolean
 
   /**
    * @param size - Dimensions of the target, in pixels.
@@ -50,7 +47,6 @@ export class RenderTarget extends Texture {
       sampleCount = 4,
       format = RenderTargetFormat.rgba8,
       mipmaps = false,
-      depth = false,
     }: RenderTargetOptions = {},
   ) {
     super()
@@ -66,7 +62,6 @@ export class RenderTarget extends Texture {
     this._sampleCount = sampleCount
     this._format = format
     this._mipmaps = mipmaps
-    this._depth = depth
   }
 
   /** @inheritDoc */
@@ -87,10 +82,5 @@ export class RenderTarget extends Texture {
   /** Whether mipmaps are generated when the target is sampled. */
   public get mipmaps(): boolean {
     return this._mipmaps
-  }
-
-  /** Whether the target receives a depth buffer. */
-  public get depth(): boolean {
-    return this._depth
   }
 }

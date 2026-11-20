@@ -2,7 +2,6 @@ import { type Matrix4x4 } from '#/math/primitives/matrices/matrix4x4.js'
 
 import { type ClearCommand } from './clear.js'
 import { type Draw2DCommand } from './draw2d.js'
-import { type Draw3DCommand } from './draw3d.js'
 
 /**
  * A backend-independent drawing operation.
@@ -11,7 +10,7 @@ import { type Draw3DCommand } from './draw3d.js'
  * without defining how a rendering backend executes it. Add new command types
  * to this union so backends can dispatch on them exhaustively.
  */
-export type DrawCommand = ClearCommand | Draw2DCommand | Draw3DCommand
+export type DrawCommand = ClearCommand | Draw2DCommand
 
 /**
  * A command that a rendering space can cull and order.

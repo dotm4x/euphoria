@@ -45,8 +45,8 @@ export interface AudioVoicePlacement {
 /**
  * State and behaviour shared by every sound source.
  *
- * Nodes own one and delegate to it, so a player and the planar and spatial
- * emitters do not repeat the same twenty fields. The voice never knows where
+ * Nodes own one and delegate to it, so a player and the emitters
+ * do not repeat the same twenty fields. The voice never knows where
  * the listener is: it only describes itself.
  */
 export class AudioVoice extends Destroyable {

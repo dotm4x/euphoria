@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { createTextMesh2D, createTextMesh3D, layoutText } from '../../../source/index.js'
+import { createTextMesh2D, layoutText } from '../../../source/index.js'
 
 import { createFont } from './fixtures.js'
 
@@ -27,27 +27,5 @@ describe('createTextMesh2D', () => {
 
   it('refuses to build a mesh for a text without visible glyphs', () => {
     expect(() => createTextMesh2D(layoutText(createFont(), ''))).toThrow(/complete triangle/)
-  })
-})
-
-describe('createTextMesh3D', () => {
-  it('places the glyphs in the plane, facing positive Z and growing upwards', () => {
-    const mesh = createTextMesh3D(layout)
-
-    expect(mesh.vertices).toHaveLength(8)
-    const top = mesh.vertices[0]
-    const bottom = mesh.vertices[2]
-    expect(top?.position.x).toBeCloseTo(0)
-    expect(top?.position.y).toBeCloseTo(0)
-    expect(top?.position.z).toBeCloseTo(0)
-    expect(bottom?.position.x).toBeCloseTo(6)
-    expect(bottom?.position.y).toBeCloseTo(-8)
-    expect(top?.normal.z).toBeCloseTo(1)
-  })
-
-  it('offsets the glyphs by the requested depth', () => {
-    const mesh = createTextMesh3D(layout, 2)
-
-    expect(mesh.vertices[0]?.position.z).toBe(2)
   })
 })

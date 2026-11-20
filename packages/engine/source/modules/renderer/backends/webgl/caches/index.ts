@@ -1,4 +1,3 @@
-export * from './meshes3d.js'
 export * from './meshes.js'
 export * from './programs.js'
 export * from './targets.js'

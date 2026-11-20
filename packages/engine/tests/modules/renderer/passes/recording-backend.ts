@@ -33,7 +33,6 @@ export class RecordingBackend extends RenderBackend {
   private readonly _viewport: Viewport
 
   public readonly defaultMaterial: GraphicMaterial = createTestMaterial()
-  public readonly default3DMaterial: GraphicMaterial = createTestMaterial()
   public readonly rendered: DrawCommand[][] = []
   public readonly contexts: (DrawContext | undefined)[] = []
   public readonly targets: (RenderTarget | undefined)[] = []
@@ -52,10 +51,6 @@ export class RecordingBackend extends RenderBackend {
   }
 
   public createMaterial(): GraphicMaterial {
-    return createTestMaterial()
-  }
-
-  public createMaterial3D(): GraphicMaterial {
     return createTestMaterial()
   }
 

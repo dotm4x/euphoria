@@ -9,7 +9,7 @@ The project brings together a game engine, a platform for creators and players, 
 ## Features
 
 - **Web-based gaming** — Create and play games directly in the browser, with no downloads or installations required.
-- **Game creation** — Build interactive 2D and 3D experiences using a modern development environment.
+- **Game creation** — Build interactive 2D experiences using a modern development environment, with 3D planned.
 - **Multiplayer** — Create shared experiences with real-time communication and multiplayer support.
 - **Publishing** — Publish games and make them accessible to players through a common platform.
 - **Discovery** — Explore games, find new experiences, and connect with creators.

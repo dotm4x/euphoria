@@ -222,7 +222,10 @@ export class TimeModule extends Module {
             try {
               channel.update(this._deltaTime, this.targetUpdateRate)
             } catch (error) {
-              throw new Error(`Update channel '${channel.identifier}' failed.`, { cause: error })
+              const reason = error instanceof Error ? error.message : String(error)
+              throw new Error(`Update channel '${channel.identifier}' failed: ${reason}`, {
+                cause: error,
+              })
             }
           }
         }

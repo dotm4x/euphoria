@@ -13,8 +13,6 @@ export interface GlTarget {
   readonly renderbuffer: WebGLRenderbuffer | undefined
   /** Number of samples drawn per pixel. */
   readonly sampleCount: number
-  /** Depth renderbuffer attached to the framebuffer, when requested. */
-  readonly depthBuffer: WebGLRenderbuffer | undefined
   /** Whether the target changed since it was last resolved. */
   dirty: boolean
 }
@@ -75,23 +73,15 @@ export class GlTargets {
     const renderbuffer = multisampled
       ? this.createRenderbuffer(samples, internalFormat, size.x, size.y)
       : undefined
-    let depthBuffer: WebGLRenderbuffer | undefined
     const framebuffer = multisampled
       ? this.createFramebuffer(renderbuffer ?? null, true)
       : resolveFramebuffer
-    if (target.depth) {
-      depthBuffer = this.createDepthRenderbuffer(size.x, size.y, multisampled ? samples : 0)
-      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
-      gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depthBuffer)
-    }
-
     const glTarget: GlTarget = {
       framebuffer,
       texture,
       resolveFramebuffer: multisampled ? resolveFramebuffer : undefined,
       renderbuffer,
       sampleCount: samples,
-      depthBuffer,
       dirty: true,
     }
     this._targets.set(target, glTarget)
@@ -152,7 +142,6 @@ export class GlTargets {
     gl.deleteFramebuffer(target.framebuffer)
     if (target.resolveFramebuffer !== undefined) gl.deleteFramebuffer(target.resolveFramebuffer)
     if (target.renderbuffer !== undefined) gl.deleteRenderbuffer(target.renderbuffer)
-    if (target.depthBuffer !== undefined) gl.deleteRenderbuffer(target.depthBuffer)
     gl.deleteTexture(target.texture)
   }
 
@@ -177,31 +166,6 @@ export class GlTargets {
     }
 
     return framebuffer
-  }
-
-  private createDepthRenderbuffer(
-    width: number,
-    height: number,
-    samples: number = 0,
-  ): WebGLRenderbuffer {
-    const gl = this._gl
-    const renderbuffer = required(gl.createRenderbuffer(), 'Unable to create a depth buffer.')
-    gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer)
-    if (samples > 1) {
-      gl.renderbufferStorageMultisample(
-        gl.RENDERBUFFER,
-        samples,
-        gl.DEPTH_COMPONENT24,
-        width,
-        height,
-      )
-    } else {
-      gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT24, width, height)
-    }
-
-    gl.bindRenderbuffer(gl.RENDERBUFFER, null)
-
-    return renderbuffer
   }
 
   private createRenderbuffer(

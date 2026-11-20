@@ -4,8 +4,8 @@ import {
   AudioBackend,
   AudioBus,
   AudioClip,
-  AudioEmitter3D,
-  AudioListener3D,
+  AudioEmitter2D,
+  AudioListener2D,
   AudioPlayer,
   Game,
   Node,
@@ -15,6 +15,7 @@ import {
   PlaybackState,
   type PlaybackStats,
   Store,
+  Vector2,
   Vector3,
 } from '../../../source/index.js'
 
@@ -105,7 +106,7 @@ describe('PlaybackModule', () => {
 
   it('takes the first listener of the scene as its ear', () => {
     const backend = new NullAudioBackend()
-    const camera = new AudioListener3D({ position: new Vector3(0, 2, 0) })
+    const camera = new AudioListener2D({ position: new Vector2(0, 2) })
     const scene = new Node({ name: 'scene', children: [camera] })
     scene.load()
     const module = new PlaybackModule({ backend, entries: [scene] })
@@ -119,7 +120,7 @@ describe('PlaybackModule', () => {
 
   it('follows a listener set by the game', () => {
     const backend = new NullAudioBackend()
-    const camera = new AudioListener3D({ position: new Vector3(5, 0, 0) })
+    const camera = new AudioListener2D({ position: new Vector2(5, 0) })
     camera.load()
     const module = new PlaybackModule({ backend })
     module.listener.value = camera
@@ -133,14 +134,14 @@ describe('PlaybackModule', () => {
 
   it('places the emitters of a loaded scene where they are', () => {
     const backend = new NullAudioBackend()
-    const emitter = new AudioEmitter3D({ clip, autoplay: true, position: new Vector3(1, 0, 2) })
+    const emitter = new AudioEmitter2D({ clip, autoplay: true, position: new Vector2(1, 2) })
     const scene = new Node({ name: 'scene', children: [emitter] })
     scene.load()
     const module = new PlaybackModule({ backend, entries: [scene] })
 
     update(module)
 
-    expect(backend.frame?.voices[0]?.position).toEqual(new Vector3(1, 0, 2))
+    expect(backend.frame?.voices[0]?.position).toEqual(new Vector3(1, 2, 0))
     module.destroy()
     scene.destroy()
   })

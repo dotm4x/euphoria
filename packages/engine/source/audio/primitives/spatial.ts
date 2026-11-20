@@ -14,17 +14,6 @@ export function planarDistance(position: Vector3, listener: Vector3): number {
 }
 
 /**
- * Calculates the distance between two points in space.
- *
- * @param position - Position of the voice.
- * @param listener - Position of the listener.
- * @returns Distance in world units.
- */
-export function spatialDistance(position: Vector3, listener: Vector3): number {
-  return position.distanceTo(listener)
-}
-
-/**
  * Calculates the stereo pan of a voice seen from the listener.
  *
  * The pan is the projection of the voice over the right axis of the listener,

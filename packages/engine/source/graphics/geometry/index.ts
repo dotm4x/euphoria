@@ -1,6 +1,3 @@
 export * from './mesh2d.js'
-export * from './mesh3d.js'
-export * from './primitives3d.js'
 export * from './quad.js'
 export * from './vertex2d.js'
-export * from './vertex3d.js'

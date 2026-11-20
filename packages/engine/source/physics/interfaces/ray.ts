@@ -1,5 +1,4 @@
 import { type Vector2 } from '#/math/primitives/vectors/vector2.js'
-import { type Vector3 } from '#/math/primitives/vectors/vector3.js'
 
 /** Filtering applied to a ray query. */
 export interface RayQueryOptions {
@@ -23,18 +22,4 @@ export interface RayHit2D {
   readonly point: Vector2
   /** Unit normal of the collider surface at the hit. */
   readonly normal: Vector2
-}
-
-/** The first collider a three-dimensional ray hits. */
-export interface RayHit3D {
-  /** Identifier of the body that owns the collider, when it has one. */
-  readonly body: string | undefined
-  /** Identifier of the collider that was hit. */
-  readonly collider: string | undefined
-  /** Distance from the ray origin to the hit, in world units. */
-  readonly distance: number
-  /** Point where the ray and the collider meet, in world units. */
-  readonly point: Vector3
-  /** Unit normal of the collider surface at the hit. */
-  readonly normal: Vector3
 }

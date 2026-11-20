@@ -3,10 +3,9 @@ import {
   type AssetProgress,
   type AssetsModule,
   type Color,
-  Dimension,
+  type Dimension,
   type GraphicMaterial,
   RapierBackend2D,
-  RapierBackend3D,
   type RenderBackend,
   type SimulationBackend,
   WebGlBackend,
@@ -31,8 +30,6 @@ export interface SceneContext {
   readonly material: GraphicMaterial
   /** Two-dimensional material without a texture. */
   readonly material2D: GraphicMaterial
-  /** Three-dimensional material shared by the spatial scenes. */
-  readonly material3D: GraphicMaterial
 }
 
 /** Configuration for a story runtime. */
@@ -132,7 +129,6 @@ export class PlaygroundRuntime {
       canvas,
       material: materials.textured,
       material2D: materials.flat,
-      material3D: materials.spatial,
     })
     const game = new Playground({
       backend,
@@ -236,16 +232,7 @@ export function disposeRuntime(): void {
 }
 
 async function createPhysics(dimensions: readonly Dimension[]): Promise<SimulationBackend[]> {
-  const backends: SimulationBackend[] = []
-  for (const dimension of dimensions) {
-    backends.push(
-      dimension === Dimension.twoDimensional
-        ? await RapierBackend2D.create()
-        : await RapierBackend3D.create(),
-    )
-  }
-
-  return backends
+  return Promise.all(dimensions.map(() => RapierBackend2D.create()))
 }
 
 /**

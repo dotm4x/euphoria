@@ -159,7 +159,10 @@ describe('TimeModule', () => {
       throw new Error('Expected the update to fail.')
     } catch (error) {
       expect(error).toBeInstanceOf(Error)
-      expect(error).toMatchObject({ message: "Update channel 'broken' failed.", cause: failure })
+      expect(error).toMatchObject({
+        message: "Update channel 'broken' failed: update failed",
+        cause: failure,
+      })
     }
 
     expect(scheduler.looping).toBe(false)

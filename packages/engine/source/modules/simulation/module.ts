@@ -70,7 +70,7 @@ export class SimulationModule extends Module implements Updatable {
    * Registers a space bound to its backend, transferring both.
    *
    * @param binding - Space and the backend that advances it.
-   * @throws {@link Error} If the space or the backend is destroyed, their identifiers are duplicated, or their dimensions differ.
+   * @throws {@link Error} If the space or the backend is destroyed or their identifiers are duplicated.
    */
   public addSpace({ space, backend }: SimulationSpaceBinding): void {
     this.throwIfDestroyed()
@@ -178,12 +178,6 @@ export class SimulationModule extends Module implements Updatable {
   }
 
   private bind({ space, backend }: SimulationSpaceBinding): void {
-    if (space.dimension !== backend.dimension) {
-      throw new Error(
-        `Simulation space '${space.identifier}' cannot run in a backend of another dimensionality.`,
-      )
-    }
-
     this._spaces.add(space)
     if (!this._backends.get(backend.identifier)) this._backends.add(backend)
     this._runtime.set(space.identifier, backend)

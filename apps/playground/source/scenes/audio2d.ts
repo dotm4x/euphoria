@@ -60,7 +60,7 @@ export interface AudioScene2DOptions {
 /**
  * Shows how a game sounds on a plane.
  *
- * The same idea as the spatial scene, one dimension down: squares orbit the
+ * Squares orbit the
  * camera and each carries a looping emitter, so the stereo pan follows what you
  * see. Planar emitters measure distance on the plane and pan from left to right.
  */

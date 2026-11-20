@@ -1,5 +1,4 @@
 import { type BodyDescriptor2D } from './descriptors/2d/body.js'
-import { type BodyDescriptor3D } from './descriptors/3d/body.js'
 
 /**
  * The bodies produced by a simulable object.
@@ -16,25 +15,6 @@ export class SimulationData2D {
    * @param bodies - The bodies to include, in processing order.
    */
   public constructor(bodies: Iterable<BodyDescriptor2D>) {
-    this.bodies = Object.freeze([...bodies])
-  }
-}
-
-/**
- * The bodies produced by a simulable object in space.
- *
- * Bodies are copied and frozen, then processed by the simulation system in the
- * order in which they appear. Simulation data does not advance the simulation
- * or depend on a specific backend.
- */
-export class SimulationData3D {
-  /** Bodies in processing order. */
-  public readonly bodies: readonly BodyDescriptor3D[]
-
-  /**
-   * @param bodies - The bodies to include, in processing order.
-   */
-  public constructor(bodies: Iterable<BodyDescriptor3D>) {
     this.bodies = Object.freeze([...bodies])
   }
 }

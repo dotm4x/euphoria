@@ -4,6 +4,4 @@ export enum AudioSpace {
   none = 'none',
   /** The voice is placed on a plane, with distance and stereo panning. */
   planar = 'planar',
-  /** The voice is placed in space, with distance, panning and orientation. */
-  spatial = 'spatial',
 }

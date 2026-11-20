@@ -60,8 +60,8 @@ async function decodeImage(blob: Blob): Promise<Image> {
 /**
  * Decodes encoded image bytes into pixels.
  *
- * Exposed so importers that carry images inside another file, such as a glTF
- * buffer, decode them the same way this importer decodes a source of its own.
+ * Exposed so importers that carry images inside another file, such as a font or
+ * an archive, decode them the same way this importer decodes a source of its own.
  *
  * @param data - Encoded bytes of the image.
  * @param type - Media type of the bytes, such as `image/png`.
